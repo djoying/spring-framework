@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.aop.aspectj;
 
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
@@ -35,7 +37,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Juergen Hoeller
  * @author Chris Beams
  */
-public class BeanNamePointcutAtAspectTests {
+class BeanNamePointcutAtAspectTests {
+
+	private ClassPathXmlApplicationContext ctx;
 
 	private ITestBean testBean1;
 
@@ -44,21 +48,25 @@ public class BeanNamePointcutAtAspectTests {
 	private CounterAspect counterAspect;
 
 
-	@org.junit.jupiter.api.BeforeEach
-	public void setup() {
-		ClassPathXmlApplicationContext ctx =
-				new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
+	@BeforeEach
+	void setup() {
+		this.ctx = new ClassPathXmlApplicationContext(getClass().getSimpleName() + ".xml", getClass());
 
 		counterAspect = (CounterAspect) ctx.getBean("counterAspect");
 		testBean1 = (ITestBean) ctx.getBean("testBean1");
 		testBean3 = (ITestBean) ctx.getBean("testBean3");
 	}
 
+	@AfterEach
+	void tearDown() {
+		this.ctx.close();
+	}
+
+
 
 	@Test
-	public void testMatchingBeanName() {
-		boolean condition = testBean1 instanceof Advised;
-		assertThat(condition).as("Expected a proxy").isTrue();
+	void matchingBeanName() {
+		assertThat(testBean1).as("Expected a proxy").isInstanceOf(Advised.class);
 
 		// Call two methods to test for SPR-3953-like condition
 		testBean1.setAge(20);
@@ -67,16 +75,15 @@ public class BeanNamePointcutAtAspectTests {
 	}
 
 	@Test
-	public void testNonMatchingBeanName() {
-		boolean condition = testBean3 instanceof Advised;
-		assertThat(condition).as("Didn't expect a proxy").isFalse();
+	void nonMatchingBeanName() {
+		assertThat(testBean3).as("Didn't expect a proxy").isNotInstanceOf(Advised.class);
 
 		testBean3.setAge(20);
 		assertThat(counterAspect.count).isEqualTo(0);
 	}
 
 	@Test
-	public void testProgrammaticProxyCreation() {
+	void programmaticProxyCreation() {
 		ITestBean testBean = new TestBean();
 
 		AspectJProxyFactory factory = new AspectJProxyFactory();
@@ -87,8 +94,7 @@ public class BeanNamePointcutAtAspectTests {
 
 		ITestBean proxyTestBean = factory.getProxy();
 
-		boolean condition = proxyTestBean instanceof Advised;
-		assertThat(condition).as("Expected a proxy").isTrue();
+		assertThat(proxyTestBean).as("Expected a proxy").isInstanceOf(Advised.class);
 		proxyTestBean.setAge(20);
 		assertThat(myCounterAspect.count).as("Programmatically created proxy shouldn't match bean()").isEqualTo(0);
 	}

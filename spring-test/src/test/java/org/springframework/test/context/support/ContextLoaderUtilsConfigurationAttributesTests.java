@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,10 @@ import org.springframework.test.context.ContextLoader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.springframework.test.context.support.ContextLoaderUtils.resolveContextConfigurationAttributes;
+import static org.springframework.test.context.support.ContextLoaderUtils.resolveDefaultContextConfigurationAttributes;
 
 /**
- * Unit tests for {@link ContextLoaderUtils} involving {@link ContextConfigurationAttributes}.
+ * Tests for {@link ContextLoaderUtils} involving {@link ContextConfigurationAttributes}.
  *
  * @author Sam Brannen
  * @since 3.1
@@ -72,7 +73,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 		Class<BareAnnotations> testClass = BareAnnotations.class;
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(testClass);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(1);
+		assertThat(attributesList).hasSize(1);
 		assertAttributes(attributesList.get(0),
 				testClass, EMPTY_STRING_ARRAY, EMPTY_CLASS_ARRAY, ContextLoader.class, true);
 	}
@@ -81,7 +82,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 	void resolveConfigAttributesWithLocalAnnotationAndLocations() {
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(LocationsFoo.class);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(1);
+		assertThat(attributesList).hasSize(1);
 		assertLocationsFooAttributes(attributesList.get(0));
 	}
 
@@ -90,7 +91,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 		Class<MetaLocationsFoo> testClass = MetaLocationsFoo.class;
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(testClass);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(1);
+		assertThat(attributesList).hasSize(1);
 		assertAttributes(attributesList.get(0),
 				testClass, new String[] {"/foo.xml"}, EMPTY_CLASS_ARRAY, ContextLoader.class, true);
 	}
@@ -100,7 +101,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 		Class<MetaLocationsFooWithOverrides> testClass = MetaLocationsFooWithOverrides.class;
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(testClass);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(1);
+		assertThat(attributesList).hasSize(1);
 		assertAttributes(attributesList.get(0),
 				testClass, new String[] {"/foo.xml"}, EMPTY_CLASS_ARRAY, ContextLoader.class, true);
 	}
@@ -110,7 +111,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 		Class<MetaLocationsFooWithOverriddenAttributes> testClass = MetaLocationsFooWithOverriddenAttributes.class;
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(testClass);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(1);
+		assertThat(attributesList).hasSize(1);
 		assertAttributes(attributesList.get(0),
 				testClass, new String[] {"foo1.xml", "foo2.xml"}, EMPTY_CLASS_ARRAY, ContextLoader.class, true);
 	}
@@ -120,7 +121,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 		Class<MetaLocationsBar> testClass = MetaLocationsBar.class;
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(testClass);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(2);
+		assertThat(attributesList).hasSize(2);
 		assertAttributes(attributesList.get(0),
 				testClass, new String[] {"/bar.xml"}, EMPTY_CLASS_ARRAY, ContextLoader.class, true);
 		assertAttributes(attributesList.get(1),
@@ -131,7 +132,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 	void resolveConfigAttributesWithLocalAnnotationAndClasses() {
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(ClassesFoo.class);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(1);
+		assertThat(attributesList).hasSize(1);
 		assertClassesFooAttributes(attributesList.get(0));
 	}
 
@@ -139,7 +140,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 	void resolveConfigAttributesWithLocalAndInheritedAnnotationsAndLocations() {
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(LocationsBar.class);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(2);
+		assertThat(attributesList).hasSize(2);
 		assertLocationsBarAttributes(attributesList.get(0));
 		assertLocationsFooAttributes(attributesList.get(1));
 	}
@@ -148,7 +149,7 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 	void resolveConfigAttributesWithLocalAndInheritedAnnotationsAndClasses() {
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(ClassesBar.class);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(2);
+		assertThat(attributesList).hasSize(2);
 		assertClassesBarAttributes(attributesList.get(0));
 		assertClassesFooAttributes(attributesList.get(1));
 	}
@@ -161,11 +162,79 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 	void resolveConfigAttributesWithLocationsAndClasses() {
 		List<ContextConfigurationAttributes> attributesList = resolveContextConfigurationAttributes(LocationsAndClasses.class);
 		assertThat(attributesList).isNotNull();
-		assertThat(attributesList.size()).isEqualTo(1);
+		assertThat(attributesList).hasSize(1);
+	}
+
+	@Test
+	void resolveDefaultContextConfigurationAttributesWithSuperclass() {
+		var attributesList = resolveDefaultContextConfigurationAttributes(Superclass.class);
+		assertThat(attributesList).hasSize(1);
+
+		var configAttributes = attributesList.get(0);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Superclass.class);
+		assertDefaultAttributes(configAttributes);
+	}
+
+	@Test
+	void resolveDefaultContextConfigurationAttributesWithSubclass() {
+		var attributesList = resolveDefaultContextConfigurationAttributes(Subclass.class);
+		assertThat(attributesList).hasSize(2);
+
+		// For bottom-up semantics, Subclass must come before Superclass.
+		var configAttributes = attributesList.get(0);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Subclass.class);
+		assertDefaultAttributes(configAttributes);
+
+		configAttributes = attributesList.get(1);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Superclass.class);
+		assertDefaultAttributes(configAttributes);
+	}
+
+	@Test
+	void resolveDefaultContextConfigurationAttributesWithNestedClass() {
+		var attributesList = resolveDefaultContextConfigurationAttributes(Superclass.NestedTests.class);
+		assertThat(attributesList).hasSize(2);
+
+		// For bottom-up semantics, Superclass.NestedTests must come before Superclass.
+		var configAttributes = attributesList.get(0);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Superclass.NestedTests.class);
+		assertDefaultAttributes(configAttributes);
+
+		configAttributes = attributesList.get(1);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Superclass.class);
+		assertDefaultAttributes(configAttributes);
+	}
+
+	@Test
+	void resolveDefaultContextConfigurationAttributesWithNestedClassesInSuperAndSubClasses() {
+		var attributesList = resolveDefaultContextConfigurationAttributes(Subclass.NestedTests.class);
+		assertThat(attributesList).hasSize(3);
+
+		// For bottom-up semantics, Subclass.NestedTests must come before Subclass.
+		var configAttributes = attributesList.get(0);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Subclass.NestedTests.class);
+		assertDefaultAttributes(configAttributes);
+
+		// For bottom-up semantics, Subclass must come before Superclass.
+		configAttributes = attributesList.get(1);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Subclass.class);
+		assertDefaultAttributes(configAttributes);
+
+		configAttributes = attributesList.get(2);
+		assertThat(configAttributes.getDeclaringClass()).isEqualTo(Superclass.class);
+		assertDefaultAttributes(configAttributes);
 	}
 
 
-	// -------------------------------------------------------------------------
+	private static void assertDefaultAttributes(ContextConfigurationAttributes configAttributes) {
+		assertThat(configAttributes.getClasses()).isEmpty();
+		assertThat(configAttributes.getLocations()).isEmpty();
+		assertThat(configAttributes.getInitializers()).isEmpty();
+		assertThat(configAttributes.getContextLoaderClass()).isEqualTo(ContextLoader.class);
+		assertThat(configAttributes.isInheritInitializers()).isTrue();
+		assertThat(configAttributes.isInheritLocations()).isTrue();
+	}
+
 
 	@ContextConfiguration(value = "x", locations = "y")
 	private static class ConflictingLocations {
@@ -173,6 +242,18 @@ class ContextLoaderUtilsConfigurationAttributesTests extends AbstractContextConf
 
 	@ContextConfiguration(locations = "x", classes = Object.class)
 	private static class LocationsAndClasses {
+	}
+
+	static class Superclass {
+		// @Nested
+		class NestedTests {
+		}
+	}
+
+	static class Subclass extends Superclass {
+		// @Nested
+		class NestedTests {
+		}
 	}
 
 }

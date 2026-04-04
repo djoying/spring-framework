@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,28 +35,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 /**
+ * Tests for various {@link LocaleResolver} implementations.
+ *
  * @author Juergen Hoeller
  * @since 20.03.2003
  */
-public class LocaleResolverTests {
+class LocaleResolverTests {
 
 	@Test
-	public void testAcceptHeaderLocaleResolver() {
+	void acceptHeaderLocaleResolver() {
 		doTest(new AcceptHeaderLocaleResolver(), false);
 	}
 
 	@Test
-	public void testFixedLocaleResolver() {
+	void fixedLocaleResolver() {
 		doTest(new FixedLocaleResolver(Locale.UK), false);
 	}
 
 	@Test
-	public void testCookieLocaleResolver() {
+	void cookieLocaleResolver() {
 		doTest(new CookieLocaleResolver(), true);
 	}
 
 	@Test
-	public void testSessionLocaleResolver() {
+	void sessionLocaleResolver() {
 		doTest(new SessionLocaleResolver(), true);
 	}
 
@@ -83,8 +85,7 @@ public class LocaleResolverTests {
 		}
 
 		// check LocaleContext
-		if (localeResolver instanceof LocaleContextResolver) {
-			LocaleContextResolver localeContextResolver = (LocaleContextResolver) localeResolver;
+		if (localeResolver instanceof LocaleContextResolver localeContextResolver) {
 			LocaleContext localeContext = localeContextResolver.resolveLocaleContext(request);
 			if (shouldSet) {
 				assertThat(localeContext.getLocale()).isEqualTo(Locale.GERMANY);
@@ -92,12 +93,13 @@ public class LocaleResolverTests {
 			else {
 				assertThat(localeContext.getLocale()).isEqualTo(Locale.UK);
 			}
-			boolean condition2 = localeContext instanceof TimeZoneAwareLocaleContext;
-			assertThat(condition2).isTrue();
+			assertThat(localeContext).isInstanceOf(TimeZoneAwareLocaleContext.class);
 			assertThat(((TimeZoneAwareLocaleContext) localeContext).getTimeZone()).isNull();
 
 			if (localeContextResolver instanceof AbstractLocaleContextResolver) {
 				((AbstractLocaleContextResolver) localeContextResolver).setDefaultTimeZone(TimeZone.getTimeZone("GMT+1"));
+				request.removeAttribute(CookieLocaleResolver.LOCALE_REQUEST_ATTRIBUTE_NAME);
+				localeContextResolver.resolveLocaleContext(request);
 				assertThat(TimeZone.getTimeZone("GMT+1")).isEqualTo(((TimeZoneAwareLocaleContext) localeContext).getTimeZone());
 			}
 
@@ -119,20 +121,20 @@ public class LocaleResolverTests {
 						new SimpleTimeZoneAwareLocaleContext(Locale.GERMANY, TimeZone.getTimeZone("GMT+2")));
 				localeContext = localeContextResolver.resolveLocaleContext(request);
 				assertThat(localeContext.getLocale()).isEqualTo(Locale.GERMANY);
-				boolean condition1 = localeContext instanceof TimeZoneAwareLocaleContext;
-				assertThat(condition1).isTrue();
+				assertThat(localeContext).isInstanceOf(TimeZoneAwareLocaleContext.class);
 				assertThat(TimeZone.getTimeZone("GMT+2")).isEqualTo(((TimeZoneAwareLocaleContext) localeContext).getTimeZone());
 
 				localeContextResolver.setLocaleContext(request, response,
 						new SimpleTimeZoneAwareLocaleContext(null, TimeZone.getTimeZone("GMT+3")));
 				localeContext = localeContextResolver.resolveLocaleContext(request);
 				assertThat(localeContext.getLocale()).isEqualTo(Locale.UK);
-				boolean condition = localeContext instanceof TimeZoneAwareLocaleContext;
-				assertThat(condition).isTrue();
+				assertThat(localeContext).isInstanceOf(TimeZoneAwareLocaleContext.class);
 				assertThat(TimeZone.getTimeZone("GMT+3")).isEqualTo(((TimeZoneAwareLocaleContext) localeContext).getTimeZone());
 
 				if (localeContextResolver instanceof AbstractLocaleContextResolver) {
 					((AbstractLocaleContextResolver) localeContextResolver).setDefaultLocale(Locale.GERMANY);
+					request.removeAttribute(CookieLocaleResolver.LOCALE_REQUEST_ATTRIBUTE_NAME);
+					localeContextResolver.resolveLocaleContext(request);
 					assertThat(localeContext.getLocale()).isEqualTo(Locale.GERMANY);
 				}
 			}

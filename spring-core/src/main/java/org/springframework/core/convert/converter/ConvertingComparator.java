@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,9 @@ package org.springframework.core.convert.converter;
 import java.util.Comparator;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.convert.ConversionService;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.comparator.Comparators;
 
@@ -35,7 +36,7 @@ import org.springframework.util.comparator.Comparators;
  * @param <S> the source type
  * @param <T> the target type
  */
-public class ConvertingComparator<S, T> implements Comparator<S> {
+public class ConvertingComparator<S, T extends @Nullable Object> implements Comparator<S> {
 
 	private final Comparator<T> comparator;
 
@@ -104,9 +105,9 @@ public class ConvertingComparator<S, T> implements Comparator<S> {
 
 
 	/**
-	 * Adapts a {@link ConversionService} and <tt>targetType</tt> to a {@link Converter}.
+	 * Adapts a {@link ConversionService} and {@code targetType} to a {@link Converter}.
 	 */
-	private static class ConversionServiceConverter<S, T> implements Converter<S, T> {
+	private static class ConversionServiceConverter<S, T> implements Converter<S, @Nullable T> {
 
 		private final ConversionService conversionService;
 
@@ -114,14 +115,13 @@ public class ConvertingComparator<S, T> implements Comparator<S> {
 
 		public ConversionServiceConverter(ConversionService conversionService, Class<? extends T> targetType) {
 			Assert.notNull(conversionService, "ConversionService must not be null");
-			Assert.notNull(targetType, "TargetType must not be null");
+			Assert.notNull(targetType, "'targetType' must not be null");
 			this.conversionService = conversionService;
 			this.targetType = targetType;
 		}
 
 		@Override
-		@Nullable
-		public T convert(S source) {
+		public @Nullable T convert(S source) {
 			return this.conversionService.convert(source, this.targetType);
 		}
 	}

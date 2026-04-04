@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.web.reactive.handler;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
 import org.springframework.beans.factory.BeanNameAware;
@@ -26,8 +27,8 @@ import org.springframework.context.support.ApplicationObjectSupport;
 import org.springframework.core.Ordered;
 import org.springframework.core.log.LogDelegateFactory;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.web.accept.ApiVersionHolder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.CorsProcessor;
@@ -35,6 +36,7 @@ import org.springframework.web.cors.reactive.CorsUtils;
 import org.springframework.web.cors.reactive.DefaultCorsProcessor;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.reactive.HandlerMapping;
+import org.springframework.web.reactive.accept.ApiVersionStrategy;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebHandler;
 import org.springframework.web.util.pattern.PathPatternParser;
@@ -58,22 +60,17 @@ public abstract class AbstractHandlerMapping extends ApplicationObjectSupport
 			LogDelegateFactory.getHiddenLog(HandlerMapping.class.getName() + ".Mappings");
 
 
-	private final PathPatternParser patternParser;
+	private final PathPatternParser patternParser = new PathPatternParser();
 
-	@Nullable
-	private CorsConfigurationSource corsConfigurationSource;
+	private @Nullable CorsConfigurationSource corsConfigurationSource;
 
 	private CorsProcessor corsProcessor = new DefaultCorsProcessor();
 
+	private @Nullable ApiVersionStrategy apiVersionStrategy;
+
 	private int order = Ordered.LOWEST_PRECEDENCE;  // default: same as non-Ordered
 
-	@Nullable
-	private String beanName;
-
-
-	public AbstractHandlerMapping() {
-		this.patternParser = new PathPatternParser();
-	}
+	private @Nullable String beanName;
 
 
 	/**
@@ -91,22 +88,9 @@ public abstract class AbstractHandlerMapping extends ApplicationObjectSupport
 	}
 
 	/**
-	 * Shortcut method for setting the same property on the underlying pattern
-	 * parser in use. For more details see:
-	 * <ul>
-	 * <li>{@link #getPathPatternParser()} -- the underlying pattern parser
-	 * <li>{@link PathPatternParser#setMatchOptionalTrailingSeparator(boolean)} --
-	 * the trailing slash option, including its default value.
-	 * </ul>
-	 */
-	public void setUseTrailingSlashMatch(boolean trailingSlashMatch) {
-		this.patternParser.setMatchOptionalTrailingSeparator(trailingSlashMatch);
-	}
-
-	/**
 	 * Return the {@link PathPatternParser} instance that is used for
 	 * {@link #setCorsConfigurations(Map) CORS configuration checks}.
-	 * Sub-classes can also use this pattern parser for their own request
+	 * Subclasses can also use this pattern parser for their own request
 	 * mapping purposes.
 	 */
 	public PathPatternParser getPathPatternParser() {
@@ -114,7 +98,7 @@ public abstract class AbstractHandlerMapping extends ApplicationObjectSupport
 	}
 
 	/**
-	 * Set the "global" CORS configurations based on URL patterns. By default the
+	 * Set the "global" CORS configurations based on URL patterns. By default, the
 	 * first matching URL pattern is combined with handler-level CORS configuration if any.
 	 * @see #setCorsConfigurationSource(CorsConfigurationSource)
 	 */
@@ -131,7 +115,7 @@ public abstract class AbstractHandlerMapping extends ApplicationObjectSupport
 	}
 
 	/**
-	 * Set the "global" CORS configuration source. By default the first matching URL
+	 * Set the "global" CORS configuration source. By default, the first matching URL
 	 * pattern is combined with the CORS configuration for the handler, if any.
 	 * @since 5.1
 	 * @see #setCorsConfigurations(Map)
@@ -156,6 +140,23 @@ public abstract class AbstractHandlerMapping extends ApplicationObjectSupport
 	 */
 	public CorsProcessor getCorsProcessor() {
 		return this.corsProcessor;
+	}
+
+	/**
+	 * Configure a strategy to manage API versioning.
+	 * @param strategy the strategy to use
+	 * @since 7.0
+	 */
+	public void setApiVersionStrategy(@Nullable ApiVersionStrategy strategy) {
+		this.apiVersionStrategy = strategy;
+	}
+
+	/**
+	 * Return the configured {@link ApiVersionStrategy} strategy.
+	 * @since 7.0
+	 */
+	public @Nullable ApiVersionStrategy getApiVersionStrategy() {
+		return this.apiVersionStrategy;
 	}
 
 	/**
@@ -184,25 +185,48 @@ public abstract class AbstractHandlerMapping extends ApplicationObjectSupport
 
 	@Override
 	public Mono<Object> getHandler(ServerWebExchange exchange) {
-		return getHandlerInternal(exchange).map(handler -> {
-			if (logger.isDebugEnabled()) {
-				logger.debug(exchange.getLogPrefix() + "Mapped to " + handler);
-			}
-			ServerHttpRequest request = exchange.getRequest();
-			if (hasCorsConfigurationSource(handler) || CorsUtils.isPreFlightRequest(request)) {
-				CorsConfiguration config = (this.corsConfigurationSource != null ?
-						this.corsConfigurationSource.getCorsConfiguration(exchange) : null);
-				CorsConfiguration handlerConfig = getCorsConfiguration(handler, exchange);
-				config = (config != null ? config.combine(handlerConfig) : handlerConfig);
-				if (config != null) {
-					config.validateAllowCredentials();
-				}
-				if (!this.corsProcessor.process(config, exchange) || CorsUtils.isPreFlightRequest(request)) {
-					return NO_OP_HANDLER;
-				}
-			}
-			return handler;
-		});
+		return initApiVersion(exchange).flatMap(versionHolder ->
+				getHandlerInternal(exchange).map(handler -> {
+					if (logger.isDebugEnabled()) {
+						logger.debug(exchange.getLogPrefix() + "Mapped to " + handler);
+					}
+					if (versionHolder.hasError()) {
+						throw versionHolder.getError();
+					}
+					ServerHttpRequest request = exchange.getRequest();
+					if (hasCorsConfigurationSource(handler) || CorsUtils.isPreFlightRequest(request)) {
+						CorsConfiguration config = (this.corsConfigurationSource != null ?
+								this.corsConfigurationSource.getCorsConfiguration(exchange) : null);
+						CorsConfiguration handlerConfig = getCorsConfiguration(handler, exchange);
+						config = (config != null ? config.combine(handlerConfig) : handlerConfig);
+						if (config != null) {
+							config.validateAllowCredentials();
+							config.validateAllowPrivateNetwork();
+						}
+						if (!this.corsProcessor.process(config, exchange) || CorsUtils.isPreFlightRequest(request)) {
+							return NO_OP_HANDLER;
+						}
+					}
+					if (getApiVersionStrategy() != null) {
+						if (versionHolder.hasVersion()) {
+							Comparable<?> version = versionHolder.getVersion();
+							getApiVersionStrategy().handleDeprecations(version, handler, exchange);
+						}
+					}
+					return handler;
+				}));
+	}
+
+	private Mono<ApiVersionHolder> initApiVersion(ServerWebExchange exchange) {
+
+		Mono<ApiVersionHolder> holderMono = (this.apiVersionStrategy != null ?
+				this.apiVersionStrategy.resolveParseAndValidateApiVersion(exchange)
+						.map(ApiVersionHolder::fromVersion)
+						.onErrorResume(RuntimeException.class, ex -> Mono.just(ApiVersionHolder.fromError(ex))) :
+				Mono.just(ApiVersionHolder.EMPTY));
+
+		return holderMono.doOnNext(holder ->
+				exchange.getAttributes().put(HandlerMapping.API_VERSION_ATTRIBUTE, holder));
 	}
 
 	/**
@@ -231,10 +255,9 @@ public abstract class AbstractHandlerMapping extends ApplicationObjectSupport
 	 * @param exchange the current exchange
 	 * @return the CORS configuration for the handler, or {@code null} if none
 	 */
-	@Nullable
-	protected CorsConfiguration getCorsConfiguration(Object handler, ServerWebExchange exchange) {
-		if (handler instanceof CorsConfigurationSource) {
-			return ((CorsConfigurationSource) handler).getCorsConfiguration(exchange);
+	protected @Nullable CorsConfiguration getCorsConfiguration(Object handler, ServerWebExchange exchange) {
+		if (handler instanceof CorsConfigurationSource ccs) {
+			return ccs.getCorsConfiguration(exchange);
 		}
 		return null;
 	}

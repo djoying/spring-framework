@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,11 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactoryUtils;
@@ -43,13 +45,13 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextException;
 import org.springframework.core.NamedThreadLocal;
 import org.springframework.core.io.Resource;
-import org.springframework.lang.Nullable;
 import org.springframework.scripting.support.StandardScriptEvalException;
 import org.springframework.scripting.support.StandardScriptUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.resource.ResourceHandlerUtils;
 import org.springframework.web.servlet.support.RequestContextUtils;
 import org.springframework.web.servlet.view.AbstractUrlBasedView;
 
@@ -60,10 +62,6 @@ import org.springframework.web.servlet.view.AbstractUrlBasedView;
  * <p>If not set, each property is auto-detected by looking up a single
  * {@link ScriptTemplateConfig} bean in the web application context and using
  * it to obtain the configured properties.
- *
- * <p>The Nashorn JavaScript engine requires Java 8+ and may require setting the
- * {@code sharedEngine} property to {@code false} in order to run properly. See
- * {@link ScriptTemplateConfigurer#setSharedEngine(Boolean)} for more details.
  *
  * @author Sebastien Deleuze
  * @author Juergen Hoeller
@@ -87,35 +85,25 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 			new NamedThreadLocal<>("ScriptTemplateView engines");
 
 
-	@Nullable
-	private ScriptEngine engine;
+	private @Nullable ScriptEngine engine;
 
-	@Nullable
-	private Supplier<ScriptEngine> engineSupplier;
+	private @Nullable Supplier<ScriptEngine> engineSupplier;
 
-	@Nullable
-	private String engineName;
+	private @Nullable String engineName;
 
-	@Nullable
-	private Boolean sharedEngine;
+	private @Nullable Boolean sharedEngine;
 
-	@Nullable
-	private String[] scripts;
+	private String @Nullable [] scripts;
 
-	@Nullable
-	private String renderObject;
+	private @Nullable String renderObject;
 
-	@Nullable
-	private String renderFunction;
+	private @Nullable String renderFunction;
 
-	@Nullable
-	private Charset charset;
+	private @Nullable Charset charset;
 
-	@Nullable
-	private String[] resourceLoaderPaths;
+	private String @Nullable [] resourceLoaderPaths;
 
-	@Nullable
-	private volatile ScriptEngineManager scriptEngineManager;
+	private volatile @Nullable ScriptEngineManager scriptEngineManager;
 
 
 	/**
@@ -198,14 +186,13 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 	 */
 	public void setResourceLoaderPath(String resourceLoaderPath) {
 		String[] paths = StringUtils.commaDelimitedListToStringArray(resourceLoaderPath);
-		this.resourceLoaderPaths = new String[paths.length + 1];
-		this.resourceLoaderPaths[0] = "";
+		this.resourceLoaderPaths = new String[paths.length];
 		for (int i = 0; i < paths.length; i++) {
 			String path = paths[i];
 			if (!path.endsWith("/") && !path.endsWith(":")) {
 				path = path + "/";
 			}
-			this.resourceLoaderPaths[i + 1] = path;
+			this.resourceLoaderPaths[i] = path;
 		}
 	}
 
@@ -233,7 +220,7 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 		if (this.renderFunction == null && viewConfig.getRenderFunction() != null) {
 			this.renderFunction = viewConfig.getRenderFunction();
 		}
-		if (this.getContentType() == null) {
+		if (getContentType() == null) {
 			setContentType(viewConfig.getContentType() != null ? viewConfig.getContentType() : DEFAULT_CONTENT_TYPE);
 		}
 		if (this.charset == null) {
@@ -258,12 +245,12 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 			engineCount++;
 		}
 		Assert.isTrue(engineCount == 1,
-				"You should define either 'engine', 'engineSupplier' or 'engineName'.");
+				"You should define either 'engine', 'engineSupplier', or 'engineName'.");
 
 		if (Boolean.FALSE.equals(this.sharedEngine)) {
 			Assert.isTrue(this.engine == null,
 					"When 'sharedEngine' is set to false, you should specify the " +
-					"script engine using 'engineName' or 'engineSupplier' , not 'engine'.");
+					"script engine using 'engineName' or 'engineSupplier', not 'engine'.");
 		}
 		else if (this.engine != null) {
 			loadScripts(this.engine);
@@ -349,13 +336,27 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 		}
 	}
 
-	@Nullable
-	protected Resource getResource(String location) {
-		if (this.resourceLoaderPaths != null) {
+	protected @Nullable Resource getResource(String location) {
+		String normalizedLocation = ResourceHandlerUtils.normalizeInputPath(location);
+		if (this.resourceLoaderPaths != null && !ResourceHandlerUtils.shouldIgnoreInputPath(normalizedLocation)) {
+			ApplicationContext context = obtainApplicationContext();
 			for (String path : this.resourceLoaderPaths) {
-				Resource resource = obtainApplicationContext().getResource(path + location);
-				if (resource.exists()) {
-					return resource;
+				Resource resource = context.getResource(path + normalizedLocation);
+				try {
+					if (resource.exists() && ResourceHandlerUtils.isResourceUnderLocation(context.getResource(path), resource)) {
+						return resource;
+					}
+				}
+				catch (IOException ex) {
+					if (logger.isDebugEnabled()) {
+						String error = "Skip location [" + normalizedLocation + "] due to error";
+						if (logger.isTraceEnabled()) {
+							logger.trace(error, ex);
+						}
+						else {
+							logger.debug(error + ": " + ex.getMessage());
+						}
+					}
 				}
 			}
 		}
@@ -388,7 +389,7 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 
 		setResponseContentType(request, response);
 		if (this.charset != null) {
-			response.setCharacterEncoding(this.charset.name());
+			response.setCharacterEncoding(this.charset);
 		}
 	}
 
@@ -466,19 +467,14 @@ public class ScriptTemplateView extends AbstractUrlBasedView {
 
 		@Override
 		public boolean equals(@Nullable Object other) {
-			if (this == other) {
-				return true;
-			}
-			if (!(other instanceof EngineKey)) {
-				return false;
-			}
-			EngineKey otherKey = (EngineKey) other;
-			return (this.engineName.equals(otherKey.engineName) && Arrays.equals(this.scripts, otherKey.scripts));
+			return (this == other || (other instanceof EngineKey that &&
+					this.engineName.equals(that.engineName) &&
+					Arrays.equals(this.scripts, that.scripts)));
 		}
 
 		@Override
 		public int hashCode() {
-			return (this.engineName.hashCode() * 29 + Arrays.hashCode(this.scripts));
+			return this.engineName.hashCode() * 29 + Arrays.hashCode(this.scripts);
 		}
 	}
 

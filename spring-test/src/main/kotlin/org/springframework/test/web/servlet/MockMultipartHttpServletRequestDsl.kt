@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package org.springframework.test.web.servlet
 
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder
-import javax.servlet.http.Part
+import jakarta.servlet.http.Part
 
 /**
  * Provide a [MockMultipartHttpServletRequestBuilder] Kotlin DSL in order to be able to write idiomatic Kotlin code.
@@ -27,7 +27,7 @@ import javax.servlet.http.Part
  * @author Sebastien Deleuze
  * @since 5.2
  */
-class MockMultipartHttpServletRequestDsl internal constructor (private val builder: MockMultipartHttpServletRequestBuilder) : MockHttpServletRequestDsl(builder) {
+class MockMultipartHttpServletRequestDsl(private val builder: MockMultipartHttpServletRequestBuilder) : MockHttpServletRequestDsl(builder) {
 
 	/**
 	 * @see [MockMultipartHttpServletRequestBuilder.file]

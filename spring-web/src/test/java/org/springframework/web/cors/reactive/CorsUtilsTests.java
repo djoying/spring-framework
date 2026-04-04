@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,11 @@
 
 package org.springframework.web.cors.reactive;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.web.server.adapter.ForwardedHeaderTransformer;
 import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest;
 import org.springframework.web.testfixture.server.MockServerWebExchange;
 
@@ -32,25 +30,26 @@ import static org.springframework.web.testfixture.http.server.reactive.MockServe
 
 /**
  * Test case for reactive {@link CorsUtils}.
+ *
  * @author Sebastien Deleuze
  * @author Rossen Stoyanchev
  */
-public class CorsUtilsTests {
+class CorsUtilsTests {
 
 	@Test
-	public void isCorsRequest() {
+	void isCorsRequest() {
 		ServerHttpRequest request = get("http://domain.example/").header(HttpHeaders.ORIGIN, "https://domain.com").build();
 		assertThat(CorsUtils.isCorsRequest(request)).isTrue();
 	}
 
 	@Test
-	public void isNotCorsRequest() {
+	void isNotCorsRequest() {
 		ServerHttpRequest request = get("/").build();
 		assertThat(CorsUtils.isCorsRequest(request)).isFalse();
 	}
 
 	@Test
-	public void isPreFlightRequest() {
+	void isPreFlightRequest() {
 		ServerHttpRequest request = options("/")
 				.header(HttpHeaders.ORIGIN, "https://domain.com")
 				.header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
@@ -59,7 +58,7 @@ public class CorsUtilsTests {
 	}
 
 	@Test
-	public void isNotPreFlightRequest() {
+	void isNotPreFlightRequest() {
 		ServerHttpRequest request = get("/").build();
 		assertThat(CorsUtils.isPreFlightRequest(request)).isFalse();
 
@@ -68,7 +67,7 @@ public class CorsUtilsTests {
 	}
 
 	@Test  // SPR-16262
-	public void isSameOriginWithXForwardedHeaders() {
+	void isSameOriginWithXForwardedHeaders() {
 		String server = "mydomain1.example";
 		testWithXForwardedHeaders(server, -1, "https", null, -1, "https://mydomain1.example");
 		testWithXForwardedHeaders(server, 123, "https", null, -1, "https://mydomain1.example");
@@ -79,7 +78,7 @@ public class CorsUtilsTests {
 	}
 
 	@Test  // SPR-16262
-	public void isSameOriginWithForwardedHeader() {
+	void isSameOriginWithForwardedHeader() {
 		String server = "mydomain1.example";
 		testWithForwardedHeader(server, -1, "proto=https", "https://mydomain1.example");
 		testWithForwardedHeader(server, 123, "proto=https", "https://mydomain1.example");
@@ -90,16 +89,14 @@ public class CorsUtilsTests {
 	}
 
 	@Test  // SPR-16362
-	@SuppressWarnings("deprecation")
-	public void isSameOriginWithDifferentSchemes() {
+	void isSameOriginWithDifferentSchemes() {
 		MockServerHttpRequest request = MockServerHttpRequest
 				.get("http://mydomain1.example")
 				.header(HttpHeaders.ORIGIN, "https://mydomain1.example")
 				.build();
-		assertThat(CorsUtils.isSameOrigin(request)).isFalse();
+		assertThat(CorsUtils.isCorsRequest(request)).isTrue();
 	}
 
-	@SuppressWarnings("deprecation")
 	private void testWithXForwardedHeaders(String serverName, int port,
 			String forwardedProto, String forwardedHost, int forwardedPort, String originHeader) {
 
@@ -120,10 +117,9 @@ public class CorsUtilsTests {
 		}
 
 		ServerHttpRequest request = adaptFromForwardedHeaders(builder);
-		assertThat(CorsUtils.isSameOrigin(request)).isTrue();
+		assertThat(CorsUtils.isCorsRequest(request)).isFalse();
 	}
 
-	@SuppressWarnings("deprecation")
 	private void testWithForwardedHeader(String serverName, int port,
 			String forwardedHeader, String originHeader) {
 
@@ -137,19 +133,13 @@ public class CorsUtilsTests {
 				.header(HttpHeaders.ORIGIN, originHeader);
 
 		ServerHttpRequest request = adaptFromForwardedHeaders(builder);
-		assertThat(CorsUtils.isSameOrigin(request)).isTrue();
+		assertThat(CorsUtils.isCorsRequest(request)).isFalse();
 	}
 
 	// SPR-16668
-	@SuppressWarnings("deprecation")
 	private ServerHttpRequest adaptFromForwardedHeaders(MockServerHttpRequest.BaseBuilder<?> builder) {
-		AtomicReference<ServerHttpRequest> requestRef = new AtomicReference<>();
 		MockServerWebExchange exchange = MockServerWebExchange.from(builder);
-		new org.springframework.web.filter.reactive.ForwardedHeaderFilter().filter(exchange, exchange2 -> {
-			requestRef.set(exchange2.getRequest());
-			return Mono.empty();
-		}).block();
-		return requestRef.get();
+		return new ForwardedHeaderTransformer().apply(exchange.getRequest());
 	}
 
 }

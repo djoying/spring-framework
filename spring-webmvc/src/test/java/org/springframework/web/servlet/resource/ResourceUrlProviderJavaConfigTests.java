@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 
 package org.springframework.web.servlet.resource;
 
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @author Rossen Stoyanchev
  */
-public class ResourceUrlProviderJavaConfigTests {
+class ResourceUrlProviderJavaConfigTests {
 
 	private final TestServlet servlet = new TestServlet();
 
@@ -53,8 +52,7 @@ public class ResourceUrlProviderJavaConfigTests {
 
 
 	@BeforeEach
-	@SuppressWarnings("resource")
-	public void setup() throws Exception {
+	void setup() throws Exception {
 		AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
 		context.setServletContext(new MockServletContext());
 		context.register(WebConfig.class);
@@ -74,7 +72,7 @@ public class ResourceUrlProviderJavaConfigTests {
 	}
 
 	@Test
-	public void resolvePathWithServletMappedAsRoot() throws Exception {
+	void resolvePathWithServletMappedAsRoot() throws Exception {
 		this.request.setRequestURI("/myapp/index");
 		this.request.setServletPath("/index");
 		this.filterChain.doFilter(this.request, this.response);
@@ -83,7 +81,7 @@ public class ResourceUrlProviderJavaConfigTests {
 	}
 
 	@Test
-	public void resolvePathWithServletMappedByPrefix() throws Exception {
+	void resolvePathWithServletMappedByPrefix() throws Exception {
 		this.request.setRequestURI("/myapp/myservlet/index");
 		this.request.setServletPath("/myservlet");
 		this.filterChain.doFilter(this.request, this.response);
@@ -92,7 +90,7 @@ public class ResourceUrlProviderJavaConfigTests {
 	}
 
 	@Test
-	public void resolvePathNoMatch() throws Exception {
+	void resolvePathNoMatch() throws Exception {
 		this.request.setRequestURI("/myapp/myservlet/index");
 		this.request.setServletPath("/myservlet");
 		this.filterChain.doFilter(this.request, this.response);
@@ -110,7 +108,7 @@ public class ResourceUrlProviderJavaConfigTests {
 	static class WebConfig extends WebMvcConfigurationSupport {
 
 		@Override
-		public void addResourceHandlers(ResourceHandlerRegistry registry) {
+		protected void addResourceHandlers(ResourceHandlerRegistry registry) {
 			registry.addResourceHandler("/resources/**")
 				.addResourceLocations("classpath:org/springframework/web/servlet/resource/test/")
 				.resourceChain(true).addResolver(new VersionResourceResolver().addContentVersionStrategy("/**"));

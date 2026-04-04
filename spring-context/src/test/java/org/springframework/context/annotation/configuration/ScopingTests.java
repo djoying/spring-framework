@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Costin Leau
  * @author Chris Beams
  */
-public class ScopingTests {
+class ScopingTests {
 
 	public static String flag = "1";
 
@@ -61,13 +61,13 @@ public class ScopingTests {
 
 
 	@BeforeEach
-	public void setUp() throws Exception {
+	void setUp() {
 		customScope = new CustomScope();
 		ctx = createContext(ScopedConfigurationClass.class);
 	}
 
 	@AfterEach
-	public void tearDown() throws Exception {
+	void tearDown() {
 		if (ctx != null) {
 			ctx.close();
 		}
@@ -86,16 +86,16 @@ public class ScopingTests {
 
 
 	@Test
-	public void testScopeOnClasses() throws Exception {
+	void scopeOnClasses() {
 		genericTestScope("scopedClass");
 	}
 
 	@Test
-	public void testScopeOnInterfaces() throws Exception {
+	void scopeOnInterfaces() {
 		genericTestScope("scopedInterface");
 	}
 
-	private void genericTestScope(String beanName) throws Exception {
+	private void genericTestScope(String beanName) {
 		String message = "scope is ignored";
 		Object bean1 = ctx.getBean(beanName);
 		Object bean2 = ctx.getBean(beanName);
@@ -130,7 +130,7 @@ public class ScopingTests {
 	}
 
 	@Test
-	public void testSameScopeOnDifferentBeans() throws Exception {
+	void sameScopeOnDifferentBeans() {
 		Object beanAInScope = ctx.getBean("scopedClass");
 		Object beanBInScope = ctx.getBean("scopedInterface");
 
@@ -147,22 +147,20 @@ public class ScopingTests {
 	}
 
 	@Test
-	public void testRawScopes() throws Exception {
+	void rawScopes() {
 		String beanName = "scopedProxyInterface";
 
 		// get hidden bean
 		Object bean = ctx.getBean("scopedTarget." + beanName);
 
-		boolean condition = bean instanceof ScopedObject;
-		assertThat(condition).isFalse();
+		assertThat(bean).isNotInstanceOf(ScopedObject.class);
 	}
 
 	@Test
-	public void testScopedProxyConfiguration() throws Exception {
+	void scopedProxyConfiguration() {
 		TestBean singleton = (TestBean) ctx.getBean("singletonWithScopedInterfaceDep");
 		ITestBean spouse = singleton.getSpouse();
-		boolean condition = spouse instanceof ScopedObject;
-		assertThat(condition).as("scoped bean is not wrapped by the scoped-proxy").isTrue();
+		assertThat(spouse).as("scoped bean is not wrapped by the scoped-proxy").isInstanceOf(ScopedObject.class);
 
 		String beanName = "scopedProxyInterface";
 
@@ -191,11 +189,10 @@ public class ScopingTests {
 	}
 
 	@Test
-	public void testScopedProxyConfigurationWithClasses() throws Exception {
+	void scopedProxyConfigurationWithClasses() {
 		TestBean singleton = (TestBean) ctx.getBean("singletonWithScopedClassDep");
 		ITestBean spouse = singleton.getSpouse();
-		boolean condition = spouse instanceof ScopedObject;
-		assertThat(condition).as("scoped bean is not wrapped by the scoped-proxy").isTrue();
+		assertThat(spouse).as("scoped bean is not wrapped by the scoped-proxy").isInstanceOf(ScopedObject.class);
 
 		String beanName = "scopedProxyClass";
 
@@ -354,11 +351,6 @@ public class ScopingTests {
 		}
 
 		@Override
-		public String getConversationId() {
-			return null;
-		}
-
-		@Override
 		public void registerDestructionCallback(String name, Runnable callback) {
 			throw new IllegalStateException("Not supposed to be called");
 		}
@@ -368,10 +360,6 @@ public class ScopingTests {
 			return beans.remove(name);
 		}
 
-		@Override
-		public Object resolveContextualObject(String key) {
-			return null;
-		}
 	}
 
 }

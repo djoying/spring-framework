@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package org.springframework.orm.jpa.persistenceunit;
 
 import java.util.List;
 
-import javax.persistence.spi.PersistenceUnitInfo;
+import jakarta.persistence.spi.PersistenceUnitInfo;
 
 /**
  * Extension of the standard JPA PersistenceUnitInfo interface, for advanced collaboration
@@ -42,9 +42,18 @@ public interface SmartPersistenceUnitInfo extends PersistenceUnitInfo {
 
 	/**
 	 * Set the persistence provider's own package name, for exclusion from class transformation.
-	 * @see #addTransformer(javax.persistence.spi.ClassTransformer)
+	 * @see #addTransformer(jakarta.persistence.spi.ClassTransformer)
 	 * @see #getNewTempClassLoader()
 	 */
 	void setPersistenceProviderPackageName(String persistenceProviderPackageName);
+
+	/**
+	 * Determine whether this persistence unit is configured for JTA transactions.
+	 * <p>This allows for a quick check without referring to the JPA transaction type enum
+	 * (primarily for achieving compatibility between JPA 3.2 and 4.0).
+	 * @since 7.0
+	 * @see jakarta.persistence.PersistenceUnitTransactionType#JTA
+	 */
+	boolean isConfiguredForJta();
 
 }

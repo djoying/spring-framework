@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package org.springframework.jms.connection;
 
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
+import jakarta.jms.Connection;
+import jakarta.jms.ConnectionFactory;
 
 /**
- * Extension of the {@code javax.jms.ConnectionFactory} interface,
+ * Extension of the {@code jakarta.jms.ConnectionFactory} interface,
  * indicating how to release Connections obtained from it.
  *
  * @author Juergen Hoeller
@@ -32,7 +32,7 @@ public interface SmartConnectionFactory extends ConnectionFactory {
 	 * Should we stop the Connection, obtained from this ConnectionFactory?
 	 * @param con the Connection to check
 	 * @return whether a stop call is necessary
-	 * @see javax.jms.Connection#stop()
+	 * @see jakarta.jms.Connection#stop()
 	 */
 	boolean shouldStop(Connection con);
 

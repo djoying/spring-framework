@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import org.springframework.web.server.ServerWebInputException;
  * body of the request through a compatible {@code HttpMessageReader}.
  *
  * <p>An {@code @RequestBody} method argument is also validated if it is
- * annotated with {@code @javax.validation.Valid} or
+ * annotated with {@code @jakarta.validation.Valid} or
  * {@link org.springframework.validation.annotation.Validated}. Validation
  * failure results in an {@link ServerWebInputException}.
  *

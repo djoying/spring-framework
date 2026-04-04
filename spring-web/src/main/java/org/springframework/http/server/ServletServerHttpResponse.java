@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,27 +18,41 @@ package org.springframework.http.server;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.nio.charset.Charset;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
+import org.springframework.core.SpringProperties;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.lang.Nullable;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
+import org.springframework.util.StreamUtils;
 
 /**
  * {@link ServerHttpResponse} implementation that is based on a {@link HttpServletResponse}.
  *
  * @author Arjen Poutsma
  * @author Rossen Stoyanchev
+ * @author Brian Clozel
  * @since 3.0
  */
 public class ServletServerHttpResponse implements ServerHttpResponse {
+
+	/**
+	 * System property that indicates whether {@code response.getBody().flush()}
+	 * should effectively flush to the network. This is by default disabled,
+	 * and developers must set the {@value}
+	 * {@linkplain org.springframework.core.SpringProperties Spring property} to
+	 * turn it on.
+	 * <p>Applications should instead {@link #flush()} on the response directly.
+	 * @since 7.0.6
+	 */
+	public static final String FLUSH_ENABLED_PROPERTY_NAME = "spring.http.response.flush.enabled";
+
+
+	private final boolean flushEnabled = SpringProperties.getFlag(FLUSH_ENABLED_PROPERTY_NAME);
 
 	private final HttpServletResponse servletResponse;
 
@@ -48,8 +62,7 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 
 	private boolean bodyUsed = false;
 
-	@Nullable
-	private HttpHeaders readOnlyHeaders;
+	private @Nullable HttpHeaders readOnlyHeaders;
 
 
 	/**
@@ -59,7 +72,7 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 	public ServletServerHttpResponse(HttpServletResponse servletResponse) {
 		Assert.notNull(servletResponse, "HttpServletResponse must not be null");
 		this.servletResponse = servletResponse;
-		this.headers = new ServletResponseHttpHeaders();
+		this.headers = new HttpHeaders(new ServletResponseHeadersAdapter(servletResponse));
 	}
 
 
@@ -71,8 +84,8 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 	}
 
 	@Override
-	public void setStatusCode(HttpStatus status) {
-		Assert.notNull(status, "HttpStatus must not be null");
+	public void setStatusCode(HttpStatusCode status) {
+		Assert.notNull(status, "HttpStatusCode must not be null");
 		this.servletResponse.setStatus(status.value());
 	}
 
@@ -90,11 +103,20 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 		}
 	}
 
+	/**
+	 * Return the body of the message as an output stream.
+	 * <p>By default, flushing the output stream has no effect
+	 * (see {@link #FLUSH_ENABLED_PROPERTY_NAME}) and should be performed
+	 * using the ServerHttpResponse-level {@link #flush()} method instead.
+	 * @return the output stream body (never {@code null})
+	 * @throws IOException in case of I/O errors
+	 */
 	@Override
 	public OutputStream getBody() throws IOException {
 		this.bodyUsed = true;
 		writeHeaders();
-		return this.servletResponse.getOutputStream();
+		return (this.flushEnabled ? this.servletResponse.getOutputStream() :
+				StreamUtils.nonFlushing(this.servletResponse.getOutputStream()));
 	}
 
 	@Override
@@ -112,93 +134,26 @@ public class ServletServerHttpResponse implements ServerHttpResponse {
 
 	private void writeHeaders() {
 		if (!this.headersWritten) {
-			getHeaders().forEach((headerName, headerValues) -> {
-				for (String headerValue : headerValues) {
-					this.servletResponse.addHeader(headerName, headerValue);
-				}
-			});
 			// HttpServletResponse exposes some headers as properties: we should include those if not already present
-			if (this.servletResponse.getContentType() == null && this.headers.getContentType() != null) {
-				this.servletResponse.setContentType(this.headers.getContentType().toString());
+			if (this.servletResponse.getContentType() == null && this.headers.containsHeader(HttpHeaders.CONTENT_TYPE)) {
+				this.servletResponse.setContentType(this.headers.getFirst(HttpHeaders.CONTENT_TYPE));
 			}
-			if (this.servletResponse.getCharacterEncoding() == null && this.headers.getContentType() != null &&
-					this.headers.getContentType().getCharset() != null) {
-				this.servletResponse.setCharacterEncoding(this.headers.getContentType().getCharset().name());
-			}
-			long contentLength = getHeaders().getContentLength();
-			if (contentLength != -1) {
-				this.servletResponse.setContentLengthLong(contentLength);
+			if (this.servletResponse.getCharacterEncoding() == null && this.headers.containsHeader(HttpHeaders.CONTENT_TYPE)) {
+				try {
+					// Lazy parsing into MediaType
+					MediaType contentType = this.headers.getContentType();
+					if (contentType != null) {
+						Charset charset = contentType.getCharset();
+						if (charset != null) {
+							this.servletResponse.setCharacterEncoding(charset);
+						}
+					}
+				}
+				catch (Exception ex) {
+					// Leave character encoding unspecified
+				}
 			}
 			this.headersWritten = true;
-		}
-	}
-
-
-	/**
-	 * Extends HttpHeaders with the ability to look up headers already present in
-	 * the underlying HttpServletResponse.
-	 *
-	 * <p>The intent is merely to expose what is available through the HttpServletResponse
-	 * i.e. the ability to look up specific header values by name. All other
-	 * map-related operations (e.g. iteration, removal, etc) apply only to values
-	 * added directly through HttpHeaders methods.
-	 *
-	 * @since 4.0.3
-	 */
-	private class ServletResponseHttpHeaders extends HttpHeaders {
-
-		private static final long serialVersionUID = 3410708522401046302L;
-
-		@Override
-		public boolean containsKey(Object key) {
-			return (super.containsKey(key) || (get(key) != null));
-		}
-
-		@Override
-		@Nullable
-		public String getFirst(String headerName) {
-			if (headerName.equalsIgnoreCase(CONTENT_TYPE)) {
-				// Content-Type is written as an override so check super first
-				String value = super.getFirst(headerName);
-				return (value != null ? value : servletResponse.getHeader(headerName));
-			}
-			else {
-				String value = servletResponse.getHeader(headerName);
-				return (value != null ? value : super.getFirst(headerName));
-			}
-		}
-
-		@Override
-		public List<String> get(Object key) {
-			Assert.isInstanceOf(String.class, key, "Key must be a String-based header name");
-
-			String headerName = (String) key;
-			if (headerName.equalsIgnoreCase(CONTENT_TYPE)) {
-				// Content-Type is written as an override so don't merge
-				return Collections.singletonList(getFirst(headerName));
-			}
-
-			Collection<String> values1 = servletResponse.getHeaders(headerName);
-			if (headersWritten) {
-				return new ArrayList<>(values1);
-			}
-			boolean isEmpty1 = CollectionUtils.isEmpty(values1);
-
-			List<String> values2 = super.get(key);
-			boolean isEmpty2 = CollectionUtils.isEmpty(values2);
-
-			if (isEmpty1 && isEmpty2) {
-				return null;
-			}
-
-			List<String> values = new ArrayList<>();
-			if (!isEmpty1) {
-				values.addAll(values1);
-			}
-			if (!isEmpty2) {
-				values.addAll(values2);
-			}
-			return values;
 		}
 	}
 

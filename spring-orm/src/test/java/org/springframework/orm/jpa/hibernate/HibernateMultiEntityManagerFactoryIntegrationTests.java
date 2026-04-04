@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,8 @@
 
 package org.springframework.orm.jpa.hibernate;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  *
  * @author Juergen Hoeller
  */
-public class HibernateMultiEntityManagerFactoryIntegrationTests extends AbstractContainerEntityManagerFactoryIntegrationTests {
+class HibernateMultiEntityManagerFactoryIntegrationTests extends AbstractContainerEntityManagerFactoryIntegrationTests {
 
 	@Autowired
 	private EntityManagerFactory entityManagerFactory2;
@@ -48,9 +47,8 @@ public class HibernateMultiEntityManagerFactoryIntegrationTests extends Abstract
 
 	@Override
 	@Test
-	public void testEntityManagerFactoryImplementsEntityManagerFactoryInfo() {
-		boolean condition = this.entityManagerFactory instanceof EntityManagerFactoryInfo;
-		assertThat(condition).as("Must have introduced config interface").isTrue();
+	protected void entityManagerFactoryImplementsEntityManagerFactoryInfo() {
+		assertThat(this.entityManagerFactory).isInstanceOf(EntityManagerFactoryInfo.class);
 		EntityManagerFactoryInfo emfi = (EntityManagerFactoryInfo) this.entityManagerFactory;
 		assertThat(emfi.getPersistenceUnitName()).isEqualTo("Drivers");
 		assertThat(emfi.getPersistenceUnitInfo()).as("PersistenceUnitInfo must be available").isNotNull();
@@ -58,7 +56,7 @@ public class HibernateMultiEntityManagerFactoryIntegrationTests extends Abstract
 	}
 
 	@Test
-	public void testEntityManagerFactory2() {
+	void entityManagerFactory2() {
 		EntityManager em = this.entityManagerFactory2.createEntityManager();
 		try {
 			assertThatIllegalArgumentException().isThrownBy(() ->

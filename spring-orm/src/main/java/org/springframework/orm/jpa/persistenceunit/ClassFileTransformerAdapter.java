@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,11 @@ package org.springframework.orm.jpa.persistenceunit;
 import java.lang.instrument.ClassFileTransformer;
 import java.security.ProtectionDomain;
 
-import javax.persistence.spi.ClassTransformer;
-
+import jakarta.persistence.spi.ClassTransformer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -35,7 +34,7 @@ import org.springframework.util.Assert;
  * @author Rod Johnson
  * @author Juergen Hoeller
  * @since 2.0
- * @see javax.persistence.spi.PersistenceUnitInfo#addTransformer(javax.persistence.spi.ClassTransformer)
+ * @see jakarta.persistence.spi.PersistenceUnitInfo#addTransformer(jakarta.persistence.spi.ClassTransformer)
  */
 class ClassFileTransformerAdapter implements ClassFileTransformer {
 
@@ -54,15 +53,14 @@ class ClassFileTransformerAdapter implements ClassFileTransformer {
 
 
 	@Override
-	@Nullable
-	public byte[] transform(
+	public byte @Nullable [] transform(
 			ClassLoader loader, String className, Class<?> classBeingRedefined,
 			ProtectionDomain protectionDomain, byte[] classfileBuffer) {
 
 		synchronized (this) {
 			if (this.currentlyTransforming) {
 				// Defensively back out when called from within the transform delegate below:
-				// in particular, for the over-eager transformer implementation in Hibernate 5.
+				// in particular, for the over-eager transformer implementation in Hibernate.
 				return null;
 			}
 

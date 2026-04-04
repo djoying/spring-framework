@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,12 +39,12 @@ import static org.assertj.core.api.Assertions.assertThatIOException;
  * @author Issam El-atif
  * @author Sam Brannen
  */
-public class FreeMarkerConfigurationFactoryBeanTests {
+class FreeMarkerConfigurationFactoryBeanTests {
 
 	private final FreeMarkerConfigurationFactoryBean fcfb = new FreeMarkerConfigurationFactoryBean();
 
 	@Test
-	public void freeMarkerConfigurationFactoryBeanWithConfigLocation() throws Exception {
+	void freeMarkerConfigurationFactoryBeanWithConfigLocation() {
 		fcfb.setConfigLocation(new FileSystemResource("myprops.properties"));
 		Properties props = new Properties();
 		props.setProperty("myprop", "/mydir");
@@ -53,7 +53,7 @@ public class FreeMarkerConfigurationFactoryBeanTests {
 	}
 
 	@Test
-	public void freeMarkerConfigurationFactoryBeanWithResourceLoaderPath() throws Exception {
+	void freeMarkerConfigurationFactoryBeanWithResourceLoaderPath() throws Exception {
 		fcfb.setTemplateLoaderPath("file:/mydir");
 		fcfb.afterPropertiesSet();
 		Configuration cfg = fcfb.getObject();
@@ -62,7 +62,7 @@ public class FreeMarkerConfigurationFactoryBeanTests {
 
 	@Test
 	@SuppressWarnings("rawtypes")
-	public void freeMarkerConfigurationFactoryBeanWithNonFileResourceLoaderPath() throws Exception {
+	void freeMarkerConfigurationFactoryBeanWithNonFileResourceLoaderPath() throws Exception {
 		fcfb.setTemplateLoaderPath("file:/mydir");
 		Properties settings = new Properties();
 		settings.setProperty("localized_lookup", "false");
@@ -88,7 +88,7 @@ public class FreeMarkerConfigurationFactoryBeanTests {
 	}
 
 	@Test  // SPR-12448
-	public void freeMarkerConfigurationAsBean() {
+	void freeMarkerConfigurationAsBean() {
 		DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 		RootBeanDefinition loaderDef = new RootBeanDefinition(SpringTemplateLoader.class);
 		loaderDef.getConstructorArgumentValues().addGenericArgumentValue(new DefaultResourceLoader());

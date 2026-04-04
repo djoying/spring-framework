@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,13 +37,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Mark Pollack
  * @author Juergen Hoeller
  */
-public class ClassPathFactoryBeanDefinitionScannerTests {
+class ClassPathFactoryBeanDefinitionScannerTests {
 
 	private static final String BASE_PACKAGE = FactoryMethodComponent.class.getPackage().getName();
 
 
 	@Test
-	public void testSingletonScopedFactoryMethod() {
+	void singletonScopedFactoryMethod() {
 		GenericApplicationContext context = new GenericApplicationContext();
 		ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(context);
 
@@ -54,7 +54,7 @@ public class ClassPathFactoryBeanDefinitionScannerTests {
 		context.refresh();
 
 		FactoryMethodComponent fmc = context.getBean("factoryMethodComponent", FactoryMethodComponent.class);
-		assertThat(fmc.getClass().getName().contains(ClassUtils.CGLIB_CLASS_SEPARATOR)).isFalse();
+		assertThat(fmc.getClass().getName()).doesNotContain(ClassUtils.CGLIB_CLASS_SEPARATOR);
 
 		TestBean tb = (TestBean) context.getBean("publicInstance"); //2
 		assertThat(tb.getName()).isEqualTo("publicInstance");
@@ -79,8 +79,7 @@ public class ClassPathFactoryBeanDefinitionScannerTests {
 
 		Object bean = context.getBean("requestScopedInstance"); //5
 		assertThat(AopUtils.isCglibProxy(bean)).isTrue();
-		boolean condition = bean instanceof ScopedObject;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(ScopedObject.class);
 
 		QualifiedClientBean clientBean = context.getBean("clientBean", QualifiedClientBean.class);
 		assertThat(clientBean.testBean).isSameAs(context.getBean("publicInstance"));

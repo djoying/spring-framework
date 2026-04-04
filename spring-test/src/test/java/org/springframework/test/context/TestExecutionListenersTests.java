@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,25 +23,29 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.Ordered;
+import org.springframework.core.annotation.AliasFor;
 import org.springframework.core.annotation.AnnotationConfigurationException;
+import org.springframework.test.context.bean.override.BeanOverrideTestExecutionListener;
+import org.springframework.test.context.bean.override.mockito.MockitoResetTestExecutionListener;
 import org.springframework.test.context.event.ApplicationEventsTestExecutionListener;
 import org.springframework.test.context.event.EventPublishingTestExecutionListener;
 import org.springframework.test.context.jdbc.SqlScriptsTestExecutionListener;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
+import org.springframework.test.context.support.CommonCachesTestExecutionListener;
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
 import org.springframework.test.context.support.DirtiesContextBeforeModesTestExecutionListener;
 import org.springframework.test.context.support.DirtiesContextTestExecutionListener;
 import org.springframework.test.context.transaction.TransactionalTestExecutionListener;
 import org.springframework.test.context.web.ServletTestExecutionListener;
+import org.springframework.util.ClassUtils;
 
-import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.springframework.test.context.TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS;
 
 /**
- * Unit tests for the {@link TestExecutionListeners @TestExecutionListeners}
+ * Tests for the {@link TestExecutionListeners @TestExecutionListeners}
  * annotation, which verify:
  * <ul>
  * <li>Proper registering of {@linkplain TestExecutionListener listeners} in
@@ -55,16 +59,24 @@ import static org.springframework.test.context.TestExecutionListeners.MergeMode.
  */
 class TestExecutionListenersTests {
 
+	private static final Class<?> MICROMETER_LISTENER_CLASS =
+			ClassUtils.resolveClassName("org.springframework.test.context.observation.MicrometerObservationRegistryTestExecutionListener", null);
+
 	@Test
 	void defaultListeners() {
-		List<Class<?>> expected = asList(ServletTestExecutionListener.class,//
+		List<Class<?>> expected = List.of(//
+				ServletTestExecutionListener.class,//
 				DirtiesContextBeforeModesTestExecutionListener.class,//
 				ApplicationEventsTestExecutionListener.class,//
+				BeanOverrideTestExecutionListener.class,//
 				DependencyInjectionTestExecutionListener.class,//
+				MICROMETER_LISTENER_CLASS,//
 				DirtiesContextTestExecutionListener.class,//
+				CommonCachesTestExecutionListener.class, //
 				TransactionalTestExecutionListener.class,//
 				SqlScriptsTestExecutionListener.class,//
-				EventPublishingTestExecutionListener.class
+				EventPublishingTestExecutionListener.class,//
+				MockitoResetTestExecutionListener.class//
 			);
 		assertRegisteredListeners(DefaultListenersTestCase.class, expected);
 	}
@@ -74,15 +86,20 @@ class TestExecutionListenersTests {
 	 */
 	@Test
 	void defaultListenersMergedWithCustomListenerPrepended() {
-		List<Class<?>> expected = asList(QuuxTestExecutionListener.class,//
+		List<Class<?>> expected = List.of(//
+				QuuxTestExecutionListener.class,//
 				ServletTestExecutionListener.class,//
 				DirtiesContextBeforeModesTestExecutionListener.class,//
 				ApplicationEventsTestExecutionListener.class,//
+				BeanOverrideTestExecutionListener.class,//
 				DependencyInjectionTestExecutionListener.class,//
+				MICROMETER_LISTENER_CLASS,//
 				DirtiesContextTestExecutionListener.class,//
+				CommonCachesTestExecutionListener.class, //
 				TransactionalTestExecutionListener.class,//
 				SqlScriptsTestExecutionListener.class,//
-				EventPublishingTestExecutionListener.class
+				EventPublishingTestExecutionListener.class,//
+				MockitoResetTestExecutionListener.class//
 			);
 		assertRegisteredListeners(MergedDefaultListenersWithCustomListenerPrependedTestCase.class, expected);
 	}
@@ -92,15 +109,20 @@ class TestExecutionListenersTests {
 	 */
 	@Test
 	void defaultListenersMergedWithCustomListenerAppended() {
-		List<Class<?>> expected = asList(ServletTestExecutionListener.class,//
+		List<Class<?>> expected = List.of(//
+				ServletTestExecutionListener.class,//
 				DirtiesContextBeforeModesTestExecutionListener.class,//
 				ApplicationEventsTestExecutionListener.class,//
+				BeanOverrideTestExecutionListener.class,//
 				DependencyInjectionTestExecutionListener.class,//
+				MICROMETER_LISTENER_CLASS,//
 				DirtiesContextTestExecutionListener.class,//
+				CommonCachesTestExecutionListener.class, //
 				TransactionalTestExecutionListener.class,
 				SqlScriptsTestExecutionListener.class,//
 				EventPublishingTestExecutionListener.class,//
-				BazTestExecutionListener.class
+				MockitoResetTestExecutionListener.class,//
+				BazTestExecutionListener.class//
 			);
 		assertRegisteredListeners(MergedDefaultListenersWithCustomListenerAppendedTestCase.class, expected);
 	}
@@ -110,30 +132,35 @@ class TestExecutionListenersTests {
 	 */
 	@Test
 	void defaultListenersMergedWithCustomListenerInserted() {
-		List<Class<?>> expected = asList(ServletTestExecutionListener.class,//
+		List<Class<?>> expected = List.of(//
+				ServletTestExecutionListener.class,//
 				DirtiesContextBeforeModesTestExecutionListener.class,//
 				ApplicationEventsTestExecutionListener.class,//
+				BeanOverrideTestExecutionListener.class,//
 				DependencyInjectionTestExecutionListener.class,//
 				BarTestExecutionListener.class,//
+				MICROMETER_LISTENER_CLASS,//
 				DirtiesContextTestExecutionListener.class,//
+				CommonCachesTestExecutionListener.class, //
 				TransactionalTestExecutionListener.class,//
 				SqlScriptsTestExecutionListener.class,//
-				EventPublishingTestExecutionListener.class
+				EventPublishingTestExecutionListener.class,//
+				MockitoResetTestExecutionListener.class//
 			);
 		assertRegisteredListeners(MergedDefaultListenersWithCustomListenerInsertedTestCase.class, expected);
 	}
 
 	@Test
 	void nonInheritedDefaultListeners() {
-		assertRegisteredListeners(NonInheritedDefaultListenersTestCase.class, asList(QuuxTestExecutionListener.class));
+		assertRegisteredListeners(NonInheritedDefaultListenersTestCase.class, List.of(QuuxTestExecutionListener.class));
 	}
 
 	@Test
 	void inheritedDefaultListeners() {
-		assertRegisteredListeners(InheritedDefaultListenersTestCase.class, asList(QuuxTestExecutionListener.class));
-		assertRegisteredListeners(SubInheritedDefaultListenersTestCase.class, asList(QuuxTestExecutionListener.class));
+		assertRegisteredListeners(InheritedDefaultListenersTestCase.class, List.of(QuuxTestExecutionListener.class));
+		assertRegisteredListeners(SubInheritedDefaultListenersTestCase.class, List.of(QuuxTestExecutionListener.class));
 		assertRegisteredListeners(SubSubInheritedDefaultListenersTestCase.class,
-				asList(QuuxTestExecutionListener.class, EnigmaTestExecutionListener.class));
+				List.of(QuuxTestExecutionListener.class, EnigmaTestExecutionListener.class));
 	}
 
 	@Test
@@ -144,7 +171,7 @@ class TestExecutionListenersTests {
 	@Test
 	void customListenersDeclaredOnInterface() {
 		assertRegisteredListeners(ExplicitListenersOnTestInterfaceTestCase.class,
-			asList(FooTestExecutionListener.class, BarTestExecutionListener.class));
+				List.of(FooTestExecutionListener.class, BarTestExecutionListener.class));
 	}
 
 	@Test
@@ -199,7 +226,7 @@ class TestExecutionListenersTests {
 	}
 
 	private List<String> names(List<Class<?>> classes) {
-		return classes.stream().map(Class::getSimpleName).collect(toList());
+		return classes.stream().map(Class::getSimpleName).toList();
 	}
 
 	private void assertRegisteredListeners(Class<?> testClass, List<Class<?>> expected) {
@@ -209,7 +236,7 @@ class TestExecutionListenersTests {
 
 	private void assertNumRegisteredListeners(Class<?> testClass, int expected) {
 		TestContextManager testContextManager = new TestContextManager(testClass);
-		assertThat(testContextManager.getTestExecutionListeners().size()).as("Num registered TELs for " + testClass).isEqualTo(expected);
+		assertThat(testContextManager.getTestExecutionListeners()).as("Num registered TELs for " + testClass).hasSize(expected);
 	}
 
 
@@ -294,6 +321,7 @@ class TestExecutionListenersTests {
 	@Retention(RetentionPolicy.RUNTIME)
 	@interface MetaListenersWithOverrides {
 
+		@AliasFor(annotation = TestExecutionListeners.class)
 		Class<? extends TestExecutionListener>[] listeners() default
 				{FooTestExecutionListener.class, BarTestExecutionListener.class};
 	}
@@ -302,8 +330,10 @@ class TestExecutionListenersTests {
 	@Retention(RetentionPolicy.RUNTIME)
 	@interface MetaInheritedListenersWithOverrides {
 
+		@AliasFor(annotation = TestExecutionListeners.class)
 		Class<? extends TestExecutionListener>[] listeners() default QuuxTestExecutionListener.class;
 
+		@AliasFor(annotation = TestExecutionListeners.class)
 		boolean inheritListeners() default true;
 	}
 
@@ -311,8 +341,10 @@ class TestExecutionListenersTests {
 	@Retention(RetentionPolicy.RUNTIME)
 	@interface MetaNonInheritedListenersWithOverrides {
 
+		@AliasFor(annotation = TestExecutionListeners.class)
 		Class<? extends TestExecutionListener>[] listeners() default QuuxTestExecutionListener.class;
 
+		@AliasFor(annotation = TestExecutionListeners.class)
 		boolean inheritListeners() default false;
 	}
 
@@ -355,9 +387,9 @@ class TestExecutionListenersTests {
 
 		@Override
 		public int getOrder() {
-			// 2500 is between DependencyInjectionTestExecutionListener (2000) and
-			// DirtiesContextTestExecutionListener (3000)
-			return 2500;
+			// 2250 is between DependencyInjectionTestExecutionListener (2000) and
+			// MicrometerObservationRegistryTestExecutionListener (2500)
+			return 2250;
 		}
 	}
 

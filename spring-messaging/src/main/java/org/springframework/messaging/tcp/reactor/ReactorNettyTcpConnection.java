@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,10 @@
 
 package org.springframework.messaging.tcp.reactor;
 
+import java.util.concurrent.CompletableFuture;
+
 import io.netty.buffer.ByteBuf;
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.netty.NettyInbound;
@@ -24,8 +27,6 @@ import reactor.netty.NettyOutbound;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.tcp.TcpConnection;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.MonoToListenableFutureAdapter;
 
 /**
  * Reactor Netty based implementation of {@link TcpConnection}.
@@ -56,11 +57,12 @@ public class ReactorNettyTcpConnection<P> implements TcpConnection<P> {
 
 
 	@Override
-	public ListenableFuture<Void> send(Message<P> message) {
+	public CompletableFuture<@Nullable Void> sendAsync(Message<P> message) {
 		ByteBuf byteBuf = this.outbound.alloc().buffer();
 		this.codec.encode(message, byteBuf);
-		Mono<Void> sendCompletion = this.outbound.send(Mono.just(byteBuf)).then();
-		return new MonoToListenableFutureAdapter<>(sendCompletion);
+		return this.outbound.send(Mono.just(byteBuf))
+				.then()
+				.toFuture();
 	}
 
 	@Override
@@ -77,6 +79,11 @@ public class ReactorNettyTcpConnection<P> implements TcpConnection<P> {
 	public void close() {
 		// Ignore result: concurrent attempts to complete are ok
 		this.completionSink.tryEmitEmpty();
+	}
+
+	@Override
+	public String toString() {
+		return "ReactorNettyTcpConnection[inbound=" + this.inbound + "]";
 	}
 
 }

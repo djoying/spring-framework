@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.fail;
  *
  * @author Rossen Stoyanchev
  */
-public class StatusResultMatchersTests {
+class StatusResultMatchersTests {
 
 	private final StatusResultMatchers matchers = new StatusResultMatchers();
 
@@ -47,7 +47,7 @@ public class StatusResultMatchersTests {
 
 
 	@Test
-	public void testHttpStatusCodeResultMatchers() throws Exception {
+	void httpStatusCodeResultMatchers() throws Exception {
 		List<AssertionError> failures = new ArrayList<>();
 		for (HttpStatus status : HttpStatus.values()) {
 			MockHttpServletResponse response = new MockHttpServletResponse();
@@ -79,29 +79,18 @@ public class StatusResultMatchersTests {
 	}
 
 	@Test
-	public void statusRanges() throws Exception {
+	void statusRanges() throws Exception {
 		for (HttpStatus status : HttpStatus.values()) {
 			MockHttpServletResponse response = new MockHttpServletResponse();
 			response.setStatus(status.value());
 			MvcResult mvcResult = new StubMvcResult(request, null, null, null, null, null, response);
 			switch (status.series().value()) {
-				case 1:
-					this.matchers.is1xxInformational().match(mvcResult);
-					break;
-				case 2:
-					this.matchers.is2xxSuccessful().match(mvcResult);
-					break;
-				case 3:
-					this.matchers.is3xxRedirection().match(mvcResult);
-					break;
-				case 4:
-					this.matchers.is4xxClientError().match(mvcResult);
-					break;
-				case 5:
-					this.matchers.is5xxServerError().match(mvcResult);
-					break;
-				default:
-					fail("Unexpected range for status code value " + status);
+				case 1 -> this.matchers.is1xxInformational().match(mvcResult);
+				case 2 -> this.matchers.is2xxSuccessful().match(mvcResult);
+				case 3 -> this.matchers.is3xxRedirection().match(mvcResult);
+				case 4 -> this.matchers.is4xxClientError().match(mvcResult);
+				case 5 -> this.matchers.is5xxServerError().match(mvcResult);
+				default -> fail("Unexpected range for status code value " + status);
 			}
 		}
 	}

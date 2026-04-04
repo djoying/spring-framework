@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,14 @@
 package org.springframework.http.codec.protobuf;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.google.protobuf.Message;
+import org.jspecify.annotations.Nullable;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,10 +32,9 @@ import reactor.core.publisher.Mono;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
-import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.HttpMessageEncoder;
-import org.springframework.lang.Nullable;
+import org.springframework.util.FastByteArrayOutputStream;
 import org.springframework.util.MimeType;
 
 /**
@@ -47,7 +48,7 @@ import org.springframework.util.MimeType;
  *
  * <p>To generate {@code Message} Java classes, you need to install the {@code protoc} binary.
  *
- * <p>This encoder requires Protobuf 3 or higher, and supports
+ * <p>This encoder requires Protobuf 3.29 or higher, and supports
  * {@code "application/x-protobuf"} and {@code "application/octet-stream"} with the official
  * {@code "com.google.protobuf:protobuf-java"} library.
  *
@@ -57,11 +58,32 @@ import org.springframework.util.MimeType;
  */
 public class ProtobufEncoder extends ProtobufCodecSupport implements HttpMessageEncoder<Message> {
 
-	private static final List<MediaType> streamingMediaTypes = MIME_TYPES
-			.stream()
-			.map(mimeType -> new MediaType(mimeType.getType(), mimeType.getSubtype(),
-					Collections.singletonMap(DELIMITED_KEY, DELIMITED_VALUE)))
-			.collect(Collectors.toList());
+	private List<MediaType> mediaTypes = iniMediaTypes(Arrays.asList(MIME_TYPES));
+
+
+	@Override
+	protected void setMimeTypes(List<MimeType> mimeTypes) {
+		super.setMimeTypes(mimeTypes);
+		this.mediaTypes = iniMediaTypes(mimeTypes);
+	}
+
+	private static List<MediaType> iniMediaTypes(List<MimeType> mimeTypes) {
+		return mimeTypes.stream()
+				.map(mimeType -> new MediaType(mimeType.getType(), mimeType.getSubtype(),
+						Collections.singletonMap(DELIMITED_KEY, DELIMITED_VALUE)))
+				.toList();
+	}
+
+
+	@Override
+	public List<MediaType> getStreamingMediaTypes() {
+		return this.mediaTypes;
+	}
+
+	@Override
+	public List<MimeType> getEncodableMimeTypes() {
+		return getMimeTypes();
+	}
 
 
 	@Override
@@ -85,37 +107,30 @@ public class ProtobufEncoder extends ProtobufCodecSupport implements HttpMessage
 	}
 
 	private DataBuffer encodeValue(Message message, DataBufferFactory bufferFactory, boolean delimited) {
-
-		DataBuffer buffer = bufferFactory.allocateBuffer();
-		boolean release = true;
+		FastByteArrayOutputStream outputStream = new FastByteArrayOutputStream();
 		try {
-			if (delimited) {
-				message.writeDelimitedTo(buffer.asOutputStream());
-			}
-			else {
-				message.writeTo(buffer.asOutputStream());
-			}
-			release = false;
-			return buffer;
+			writeMessage(message, delimited, outputStream);
+			byte[] bytes = outputStream.toByteArrayUnsafe();
+			return bufferFactory.wrap(bytes);
 		}
 		catch (IOException ex) {
 			throw new IllegalStateException("Unexpected I/O error while writing to data buffer", ex);
 		}
-		finally {
-			if (release) {
-				DataBufferUtils.release(buffer);
-			}
+	}
+
+	/**
+	 * Use write methods on {@link Message} to write to the given {@code OutputStream}.
+	 * @since 7.0
+	 */
+	protected void writeMessage(
+			Message message, boolean delimited, OutputStream outputStream) throws IOException {
+
+		if (delimited) {
+			message.writeDelimitedTo(outputStream);
 		}
-	}
-
-	@Override
-	public List<MediaType> getStreamingMediaTypes() {
-		return streamingMediaTypes;
-	}
-
-	@Override
-	public List<MimeType> getEncodableMimeTypes() {
-		return getMimeTypes();
+		else {
+			message.writeTo(outputStream);
+		}
 	}
 
 }

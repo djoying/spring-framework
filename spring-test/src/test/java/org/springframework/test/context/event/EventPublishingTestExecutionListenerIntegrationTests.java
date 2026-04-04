@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncConfigurerSupport;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
@@ -52,7 +52,7 @@ import org.springframework.util.ReflectionUtils;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatRuntimeException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.only;
@@ -66,42 +66,46 @@ import static org.mockito.Mockito.verify;
  * @author Sam Brannen
  * @since 5.2
  */
-public class EventPublishingTestExecutionListenerIntegrationTests {
+class EventPublishingTestExecutionListenerIntegrationTests {
 
 	private static final String THREAD_NAME_PREFIX = "Test-";
 
 	private static final CountDownLatch countDownLatch = new CountDownLatch(1);
 
 	private final TestContextManager testContextManager = new TestContextManager(ExampleTestCase.class);
+
 	private final TestContext testContext = testContextManager.getTestContext();
+
 	// Note that the following invocation of getApplicationContext() forces eager
 	// loading of the test's ApplicationContext which consequently results in the
 	// publication of all test execution events. Otherwise, TestContext#publishEvent
 	// would never fire any events for ExampleTestCase.
 	private final TestExecutionListener listener = testContext.getApplicationContext().getBean(TestExecutionListener.class);
+
 	private final Object testInstance = new ExampleTestCase();
+
 	private final Method traceableTestMethod = ReflectionUtils.findMethod(ExampleTestCase.class, "traceableTest");
 
 
 	@AfterEach
-	public void closeApplicationContext() {
+	void closeApplicationContext() {
 		this.testContext.markApplicationContextDirty(null);
 	}
 
 	@Test
-	public void beforeTestClassAnnotation() throws Exception {
+	void beforeTestClassAnnotation() throws Exception {
 		testContextManager.beforeTestClass();
 		verify(listener, only()).beforeTestClass(testContext);
 	}
 
 	@Test
-	public void prepareTestInstanceAnnotation() throws Exception {
+	void prepareTestInstanceAnnotation() throws Exception {
 		testContextManager.prepareTestInstance(testInstance);
 		verify(listener, only()).prepareTestInstance(testContext);
 	}
 
 	@Test
-	public void beforeTestMethodAnnotation() throws Exception {
+	void beforeTestMethodAnnotation() throws Exception {
 		testContextManager.beforeTestMethod(testInstance, traceableTestMethod);
 		verify(listener, only()).beforeTestMethod(testContext);
 	}
@@ -113,7 +117,7 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 	 * {@link ExampleTestCase#standardTest()} is not.
 	 */
 	@Test
-	public void beforeTestMethodAnnotationWithFailingCondition() throws Exception {
+	void beforeTestMethodAnnotationWithFailingCondition() throws Exception {
 		Method standardTest = ReflectionUtils.findMethod(ExampleTestCase.class, "standardTest");
 		testContextManager.beforeTestMethod(testInstance, standardTest);
 		verify(listener, never()).beforeTestMethod(testContext);
@@ -124,10 +128,10 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 	 * should fail the test method.
 	 */
 	@Test
-	public void beforeTestMethodAnnotationWithFailingEventListener() throws Exception {
-		Method method = ReflectionUtils.findMethod(ExampleTestCase.class, "testWithFailingEventListener");
-		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() ->
-				testContextManager.beforeTestMethod(testInstance, method))
+	void beforeTestMethodAnnotationWithFailingEventListener() throws Exception {
+		Method method = ReflectionUtils.findMethod(ExampleTestCase.class, "withFailingEventListener");
+		assertThatRuntimeException()
+			.isThrownBy(() -> testContextManager.beforeTestMethod(testInstance, method))
 			.withMessageContaining("Boom!");
 		verify(listener, only()).beforeTestMethod(testContext);
 	}
@@ -137,41 +141,41 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 	 * should not fail the test method.
 	 */
 	@Test
-	public void beforeTestMethodAnnotationWithFailingAsyncEventListener() throws Exception {
+	void beforeTestMethodAnnotationWithFailingAsyncEventListener() throws Exception {
 		TrackingAsyncUncaughtExceptionHandler.asyncException = null;
 
-		String methodName = "testWithFailingAsyncEventListener";
+		String methodName = "withFailingAsyncEventListener";
 		Method method = ReflectionUtils.findMethod(ExampleTestCase.class, methodName);
 
 		testContextManager.beforeTestMethod(testInstance, method);
 
-		assertThat(countDownLatch.await(2, TimeUnit.SECONDS)).isEqualTo(true);
+		assertThat(countDownLatch.await(2, TimeUnit.SECONDS)).isTrue();
 
 		verify(listener, only()).beforeTestMethod(testContext);
 		assertThat(TrackingAsyncUncaughtExceptionHandler.asyncException.getMessage())
-			.startsWith("Asynchronous exception for test method [" + methodName + "] in thread [" + THREAD_NAME_PREFIX);
+				.startsWith("Asynchronous exception for test method [" + methodName + "] in thread [" + THREAD_NAME_PREFIX);
 	}
 
 	@Test
-	public void beforeTestExecutionAnnotation() throws Exception {
+	void beforeTestExecutionAnnotation() throws Exception {
 		testContextManager.beforeTestExecution(testInstance, traceableTestMethod);
 		verify(listener, only()).beforeTestExecution(testContext);
 	}
 
 	@Test
-	public void afterTestExecutionAnnotation() throws Exception {
+	void afterTestExecutionAnnotation() throws Exception {
 		testContextManager.afterTestExecution(testInstance, traceableTestMethod, null);
 		verify(listener, only()).afterTestExecution(testContext);
 	}
 
 	@Test
-	public void afterTestMethodAnnotation() throws Exception {
+	void afterTestMethodAnnotation() throws Exception {
 		testContextManager.afterTestMethod(testInstance, traceableTestMethod, null);
 		verify(listener, only()).afterTestMethod(testContext);
 	}
 
 	@Test
-	public void afterTestClassAnnotation() throws Exception {
+	void afterTestClassAnnotation() throws Exception {
 		testContextManager.afterTestClass();
 		verify(listener, only()).afterTestClass(testContext);
 	}
@@ -188,22 +192,22 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 
 		@Traceable
 		@Test
-		public void traceableTest() {
+		void traceableTest() {
 			/* no-op */
 		}
 
 		@Test
-		public void standardTest() {
+		void standardTest() {
 			/* no-op */
 		}
 
 		@Test
-		public void testWithFailingEventListener() {
+		void withFailingEventListener() {
 			/* no-op */
 		}
 
 		@Test
-		public void testWithFailingAsyncEventListener() {
+		void withFailingAsyncEventListener() {
 			/* no-op */
 		}
 
@@ -211,7 +215,7 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 
 	@Configuration
 	@EnableAsync(proxyTargetClass = true)
-	static class TestEventListenerConfiguration extends AsyncConfigurerSupport {
+	static class TestEventListenerConfiguration implements AsyncConfigurer {
 
 		@Override
 		public Executor getAsyncExecutor() {
@@ -228,7 +232,7 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 
 		@Bean
 		public TestExecutionListener listener() {
-			return mock(TestExecutionListener.class);
+			return mock();
 		}
 
 		/**
@@ -256,7 +260,7 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 			listener().beforeTestMethod(e.getSource());
 		}
 
-		@BeforeTestMethod("event.testContext.testMethod.name == 'testWithFailingEventListener'")
+		@BeforeTestMethod("event.testContext.testMethod.name == 'withFailingEventListener'")
 		public void beforeTestMethodWithFailure(BeforeTestMethodEvent event) throws Exception {
 			listener().beforeTestMethod(event.getSource());
 			throw new RuntimeException("Boom!");
@@ -301,12 +305,12 @@ public class EventPublishingTestExecutionListenerIntegrationTests {
 			this.listener = listener;
 		}
 
-		@BeforeTestMethod("event.testContext.testMethod.name == 'testWithFailingAsyncEventListener'")
+		@BeforeTestMethod("event.testContext.testMethod.name == 'withFailingAsyncEventListener'")
 		@Async
 		public void beforeTestMethodWithAsyncFailure(BeforeTestMethodEvent event) throws Exception {
 			this.listener.beforeTestMethod(event.getSource());
 			throw new RuntimeException(String.format("Asynchronous exception for test method [%s] in thread [%s]",
-				event.getTestContext().getTestMethod().getName(), Thread.currentThread().getName()));
+					event.getTestContext().getTestMethod().getName(), Thread.currentThread().getName()));
 		}
 
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import org.apache.commons.logging.LogFactory;
 /**
  * A convenient accessor for Commons Logging, providing not only
  * {@code CharSequence} based log methods but also {@code Supplier}
- * based variants for use with Java 8 lambda expressions.
+ * based variants for use with Java lambda expressions.
  *
  * @author Juergen Hoeller
  * @since 5.2

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -33,6 +34,7 @@ import io.netty.buffer.PoolArenaMetric;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocatorMetric;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,7 +50,7 @@ import org.springframework.core.io.buffer.NettyDataBufferFactory;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 
 /**
  * Base class for tests that read or write data buffers with an extension to check
@@ -59,6 +61,15 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
  * @author Sam Brannen
  */
 public abstract class AbstractDataBufferAllocatingTests {
+
+	private static UnpooledByteBufAllocator netty4OffHeapUnpooled;
+
+	private static UnpooledByteBufAllocator netty4OnHeapUnpooled;
+
+	private static PooledByteBufAllocator netty4OffHeapPooled;
+
+	private static PooledByteBufAllocator netty4OnHeapPooled;
+
 
 	@RegisterExtension
 	AfterEachCallback leakDetector = context -> waitForDataBufferRelease(Duration.ofSeconds(2));
@@ -89,8 +100,12 @@ public abstract class AbstractDataBufferAllocatingTests {
 	}
 
 	protected Consumer<DataBuffer> stringConsumer(String expected) {
+		return stringConsumer(expected, UTF_8);
+	}
+
+	protected Consumer<DataBuffer> stringConsumer(String expected, Charset charset) {
 		return dataBuffer -> {
-			String value = dataBuffer.toString(UTF_8);
+			String value = dataBuffer.toString(charset);
 			DataBufferUtils.release(dataBuffer);
 			assertThat(value).isEqualTo(expected);
 		};
@@ -145,30 +160,38 @@ public abstract class AbstractDataBufferAllocatingTests {
 		return metrics.stream().mapToLong(PoolArenaMetric::numActiveAllocations).sum();
 	}
 
+	@BeforeAll
+	@SuppressWarnings("deprecation") // PooledByteBufAllocator no longer supports tinyCacheSize.
+	static void createAllocators() {
+		netty4OnHeapUnpooled = new UnpooledByteBufAllocator(false);
+		netty4OffHeapUnpooled = new UnpooledByteBufAllocator(true);
+		netty4OnHeapPooled = new PooledByteBufAllocator(false, 1, 1, 4096, 4, 0, 0, 0, true);
+		netty4OffHeapPooled = new PooledByteBufAllocator(true, 1, 1, 4096, 4, 0, 0, 0, true);
+	}
+
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
-	@ParameterizedTest(name = "[{index}] {0}")
+	@ParameterizedTest
 	@MethodSource("org.springframework.core.testfixture.io.buffer.AbstractDataBufferAllocatingTests#dataBufferFactories()")
 	public @interface ParameterizedDataBufferAllocatingTest {
 	}
 
-	@SuppressWarnings("deprecation") // PooledByteBufAllocator no longer supports tinyCacheSize.
-	public static Stream<Arguments> dataBufferFactories() {
+	static Stream<Arguments> dataBufferFactories() {
 		return Stream.of(
-			arguments("NettyDataBufferFactory - UnpooledByteBufAllocator - preferDirect = true",
-					new NettyDataBufferFactory(new UnpooledByteBufAllocator(true))),
-			arguments("NettyDataBufferFactory - UnpooledByteBufAllocator - preferDirect = false",
-					new NettyDataBufferFactory(new UnpooledByteBufAllocator(false))),
-			// 1) Disable caching for reliable leak detection, see https://github.com/netty/netty/issues/5275
-			// 2) maxOrder is 4 (vs default 11) but can be increased if necessary
-			arguments("NettyDataBufferFactory - PooledByteBufAllocator - preferDirect = true",
-					new NettyDataBufferFactory(new PooledByteBufAllocator(true, 1, 1, 4096, 4, 0, 0, 0, true))),
-			arguments("NettyDataBufferFactory - PooledByteBufAllocator - preferDirect = false",
-					new NettyDataBufferFactory(new PooledByteBufAllocator(false, 1, 1, 4096, 4, 0, 0, 0, true))),
-			arguments("DefaultDataBufferFactory - preferDirect = true",
+			// Netty 4
+			argumentSet("NettyDataBufferFactory - UnpooledByteBufAllocator - preferDirect = true",
+					new NettyDataBufferFactory(netty4OffHeapUnpooled)),
+			argumentSet("NettyDataBufferFactory - UnpooledByteBufAllocator - preferDirect = false",
+					new NettyDataBufferFactory(netty4OnHeapUnpooled)),
+			argumentSet("NettyDataBufferFactory - PooledByteBufAllocator - preferDirect = true",
+					new NettyDataBufferFactory(netty4OffHeapPooled)),
+			argumentSet("NettyDataBufferFactory - PooledByteBufAllocator - preferDirect = false",
+					new NettyDataBufferFactory(netty4OnHeapPooled)),
+			// Default
+			argumentSet("DefaultDataBufferFactory - preferDirect = true",
 					new DefaultDataBufferFactory(true)),
-			arguments("DefaultDataBufferFactory - preferDirect = false",
+			argumentSet("DefaultDataBufferFactory - preferDirect = false",
 					new DefaultDataBufferFactory(false))
 		);
 	}

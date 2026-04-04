@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,24 +21,29 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * Resolver that delegates to the chain, and if a resource is found, it then
- * attempts to find an encoded (e.g. gzip, brotli) variant that is acceptable
+ * attempts to find an encoded (for example, gzip, brotli) variant that is acceptable
  * based on the "Accept-Encoding" request header.
  *
  * <p>The list of supported {@link #setContentCodings(List) contentCodings} can
@@ -77,7 +82,7 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 	 * given request, and that has a file present with the associated extension,
 	 * is used.
 	 * <p><strong>Note:</strong> Each coding must be associated with a file
-	 * extension via {@link #registerExtension} or {@link #setExtensions}. Also
+	 * extension via {@link #registerExtension} or {@link #setExtensions}. Also,
 	 * customizations to the list of codings here should be matched by
 	 * customizations to the same list in {@link CachingResourceResolver} to
 	 * ensure encoded variants of a resource are cached under separate keys.
@@ -127,7 +132,7 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 
 
 	@Override
-	protected Resource resolveResourceInternal(@Nullable HttpServletRequest request, String requestPath,
+	protected @Nullable Resource resolveResourceInternal(@Nullable HttpServletRequest request, String requestPath,
 			List<? extends Resource> locations, ResourceResolverChain chain) {
 
 		Resource resource = chain.resolveResource(request, requestPath, locations);
@@ -135,35 +140,29 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 			return resource;
 		}
 
-		String acceptEncoding = getAcceptEncoding(request);
-		if (acceptEncoding == null) {
+		List<String> acceptedCodings = parseAcceptEncoding(request);
+		if (acceptedCodings.isEmpty()) {
 			return resource;
 		}
 
-		for (String coding : this.contentCodings) {
-			if (acceptEncoding.contains(coding)) {
+		for (String acceptedCoding : acceptedCodings) {
+			if (this.contentCodings.contains(acceptedCoding)) {
 				try {
-					String extension = getExtension(coding);
-					Resource encoded = new EncodedResource(resource, coding, extension);
+					String extension = getExtension(acceptedCoding);
+					Resource encoded = new EncodedResource(resource, acceptedCoding, extension);
 					if (encoded.exists()) {
 						return encoded;
 					}
 				}
 				catch (IOException ex) {
 					if (logger.isTraceEnabled()) {
-						logger.trace("No " + coding + " resource for [" + resource.getFilename() + "]", ex);
+						logger.trace("No " + acceptedCoding + " resource for [" + resource.getFilename() + "]", ex);
 					}
 				}
 			}
 		}
 
 		return resource;
-	}
-
-	@Nullable
-	private String getAcceptEncoding(HttpServletRequest request) {
-		String header = request.getHeader(HttpHeaders.ACCEPT_ENCODING);
-		return (header != null ? header.toLowerCase() : null);
 	}
 
 	private String getExtension(String coding) {
@@ -175,10 +174,27 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 	}
 
 	@Override
-	protected String resolveUrlPathInternal(String resourceUrlPath,
+	protected @Nullable String resolveUrlPathInternal(String resourceUrlPath,
 			List<? extends Resource> locations, ResourceResolverChain chain) {
 
 		return chain.resolveUrlPath(resourceUrlPath, locations);
+	}
+
+	/**
+	 * Parse the accepted encodings from the given HTTP request.
+	 */
+	static List<String> parseAcceptEncoding(HttpServletRequest request) {
+		String header = request.getHeader("Accept-Encoding");
+		if (!StringUtils.hasText(header)) {
+			return Collections.emptyList();
+		}
+		header = header.toLowerCase(Locale.ROOT);
+		return Arrays.stream(StringUtils.tokenizeToStringArray(header, ","))
+				.map(token -> {
+					int index = token.indexOf(';');
+					return (index >= 0 ? token.substring(0, index) : token).trim();
+				})
+				.toList();
 	}
 
 
@@ -197,12 +213,6 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 			this.original = original;
 			this.coding = coding;
 			this.encoded = original.createRelative(original.getFilename() + extension);
-		}
-
-
-		@Override
-		public InputStream getInputStream() throws IOException {
-			return this.encoded.getInputStream();
 		}
 
 		@Override
@@ -241,6 +251,31 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 		}
 
 		@Override
+		public Path getFilePath() throws IOException {
+			return this.encoded.getFilePath();
+		}
+
+		@Override
+		public InputStream getInputStream() throws IOException {
+			return this.encoded.getInputStream();
+		}
+
+		@Override
+		public ReadableByteChannel readableChannel() throws IOException {
+			return this.encoded.readableChannel();
+		}
+
+		@Override
+		public byte[] getContentAsByteArray() throws IOException {
+			return this.encoded.getContentAsByteArray();
+		}
+
+		@Override
+		public String getContentAsString(Charset charset) throws IOException {
+			return this.encoded.getContentAsString(charset);
+		}
+
+		@Override
 		public long contentLength() throws IOException {
 			return this.encoded.contentLength();
 		}
@@ -256,8 +291,7 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 		}
 
 		@Override
-		@Nullable
-		public String getFilename() {
+		public @Nullable String getFilename() {
 			return this.original.getFilename();
 		}
 
@@ -269,8 +303,8 @@ public class EncodedResourceResolver extends AbstractResourceResolver {
 		@Override
 		public HttpHeaders getResponseHeaders() {
 			HttpHeaders headers;
-			if (this.original instanceof HttpResource) {
-				headers = ((HttpResource) this.original).getResponseHeaders();
+			if (this.original instanceof HttpResource httpResource) {
+				headers = httpResource.getResponseHeaders();
 			}
 			else {
 				headers = new HttpHeaders();

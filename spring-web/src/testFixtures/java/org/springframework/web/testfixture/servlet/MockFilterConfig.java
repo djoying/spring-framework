@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,17 +21,17 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletContext;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletContext;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Mock implementation of the {@link javax.servlet.FilterConfig} interface.
+ * Mock implementation of the {@link jakarta.servlet.FilterConfig} interface.
  *
  * <p>Used for testing the web framework; also useful for testing
- * custom {@link javax.servlet.Filter} implementations.
+ * custom {@link jakarta.servlet.Filter} implementations.
  *
  * @author Juergen Hoeller
  * @since 1.0.2

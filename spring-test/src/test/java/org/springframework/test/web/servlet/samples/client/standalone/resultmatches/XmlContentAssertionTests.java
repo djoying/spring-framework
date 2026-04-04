@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,16 @@ package org.springframework.test.web.servlet.samples.client.standalone.resultmat
 import java.util.Arrays;
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
-import javax.xml.bind.annotation.XmlRootElement;
-
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlElementWrapper;
+import jakarta.xml.bind.annotation.XmlRootElement;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.web.Person;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -45,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author Rossen Stoyanchev
  */
-public class XmlContentAssertionTests {
+class XmlContentAssertionTests {
 
 	private static final String PEOPLE_XML =
 			"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
@@ -59,6 +59,7 @@ public class XmlContentAssertionTests {
 
 	private final WebTestClient testClient =
 			MockMvcWebTestClient.bindToController(new MusicController())
+					.messageConverters(new Jaxb2RootElementHttpMessageConverter())
 					.alwaysExpect(status().isOk())
 					.alwaysExpect(content().contentType(MediaType.parseMediaType("application/xml;charset=UTF-8")))
 					.configureClient()
@@ -67,14 +68,14 @@ public class XmlContentAssertionTests {
 
 
 	@Test
-	public void testXmlEqualTo() {
+	void xmlEqualTo() {
 		testClient.get().uri("/music/people")
 				.exchange()
 				.expectBody().xml(PEOPLE_XML);
 	}
 
 	@Test
-	public void testNodeHamcrestMatcher() {
+	void nodeHamcrestMatcher() {
 		testClient.get().uri("/music/people")
 				.exchange()
 				.expectBody().xpath("/people/composers/composer[1]").exists();

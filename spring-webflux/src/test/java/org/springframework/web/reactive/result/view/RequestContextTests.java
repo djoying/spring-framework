@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest;
 import org.springframework.web.testfixture.server.MockServerWebExchange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link RequestContext}.
+ * Tests for {@link RequestContext}.
+ *
  * @author Rossen Stoyanchev
  */
-public class RequestContextTests {
+class RequestContextTests {
 
 	private final MockServerWebExchange exchange =
 			MockServerWebExchange.from(MockServerHttpRequest.get("/foo/path").contextPath("/foo"));
@@ -43,19 +45,19 @@ public class RequestContextTests {
 
 
 	@BeforeEach
-	public void init() {
+	void init() {
 		this.applicationContext = new GenericApplicationContext();
 		this.applicationContext.refresh();
 	}
 
 	@Test
-	public void testGetContextUrl() throws Exception {
+	void getContextUrl() {
 		RequestContext context = new RequestContext(this.exchange, this.model, this.applicationContext);
 		assertThat(context.getContextUrl("bar")).isEqualTo("/foo/bar");
 	}
 
 	@Test
-	public void testGetContextUrlWithMap() throws Exception {
+	void getContextUrlWithMap() {
 		RequestContext context = new RequestContext(this.exchange, this.model, this.applicationContext);
 		Map<String, Object> map = new HashMap<>();
 		map.put("foo", "bar");
@@ -64,12 +66,30 @@ public class RequestContextTests {
 	}
 
 	@Test
-	public void testGetContextUrlWithMapEscaping() throws Exception {
+	void getContextUrlWithMapEscaping() {
 		RequestContext context = new RequestContext(this.exchange, this.model, this.applicationContext);
 		Map<String, Object> map = new HashMap<>();
 		map.put("foo", "bar baz");
 		map.put("spam", "&bucket=");
 		assertThat(context.getContextUrl("{foo}?spam={spam}", map)).isEqualTo("/foo/bar%20baz?spam=%26bucket%3D");
+	}
+
+	@Test
+	void defaultHtmlEscapeNotConfigured() {
+		RequestContext context = new RequestContext(this.exchange, this.model, this.applicationContext);
+		assertThat(context.getDefaultHtmlEscape()).isNull();
+		assertThat(context.isDefaultHtmlEscape()).isFalse();
+	}
+	@Test
+	void defaultHtmlEscape() {
+		MockServerWebExchange exchange = MockServerWebExchange.builder(
+				MockServerHttpRequest.get("/foo/path").contextPath("/foo")).build();
+
+		exchange.getAttributes().put(ServerWebExchange.HTML_ESCAPE_ATTRIBUTE, true);
+
+		RequestContext context = new RequestContext(exchange, this.model, this.applicationContext);
+		assertThat(context.getDefaultHtmlEscape()).isTrue();
+		assertThat(context.isDefaultHtmlEscape()).isTrue();
 	}
 
 }

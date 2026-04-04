@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,9 @@ import javax.management.remote.JMXConnectorServerFactory;
 import javax.management.remote.JMXServiceURL;
 
 import org.junit.jupiter.api.AfterEach;
+import org.opentest4j.TestAbortedException;
 
-import org.springframework.util.SocketUtils;
+import org.springframework.core.testfixture.net.TestSocketUtils;
 
 /**
  * @author Rob Harrop
@@ -37,7 +38,8 @@ import org.springframework.util.SocketUtils;
  */
 class RemoteMBeanClientInterceptorTests extends MBeanClientInterceptorTests {
 
-	private final int servicePort = SocketUtils.findAvailableTcpPort();
+	@SuppressWarnings("deprecation")
+	private final int servicePort = TestSocketUtils.findAvailableTcpPort();
 
 	private final String serviceUrl = "service:jmx:jmxmp://localhost:" + servicePort;
 
@@ -55,9 +57,9 @@ class RemoteMBeanClientInterceptorTests extends MBeanClientInterceptorTests {
 			this.connectorServer.start();
 		}
 		catch (BindException ex) {
-			System.out.println("Skipping remote JMX tests because binding to local port ["
-					+ this.servicePort + "] failed: " + ex.getMessage());
 			runTests = false;
+			throw new TestAbortedException("Skipping remote JMX tests because binding to local port [%s] failed: %s"
+					.formatted(this.servicePort, ex.getMessage()));
 		}
 	}
 
@@ -73,7 +75,7 @@ class RemoteMBeanClientInterceptorTests extends MBeanClientInterceptorTests {
 
 	@AfterEach
 	@Override
-	public void tearDown() throws Exception {
+	protected void tearDown() throws Exception {
 		if (this.connector != null) {
 			this.connector.close();
 		}

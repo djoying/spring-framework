@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,17 @@
 
 package org.springframework.test.web.client.samples.matchers;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.Collections;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.Person;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.endsWith;
@@ -51,7 +49,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  * @see org.springframework.test.web.client.match.JsonPathRequestMatchers
  * @see org.springframework.test.web.client.match.JsonPathRequestMatchersTests
  */
-public class JsonPathRequestMatchersIntegrationTests {
+class JsonPathRequestMatchersIntegrationTests {
 
 	private static final MultiValueMap<String, Person> people = new LinkedMultiValueMap<>();
 
@@ -65,14 +63,20 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 
-	private final RestTemplate restTemplate =
-			new RestTemplate(Collections.singletonList(new MappingJackson2HttpMessageConverter()));
+	private RestClient restClient;
 
-	private final MockRestServiceServer mockServer = MockRestServiceServer.createServer(this.restTemplate);
+	private MockRestServiceServer mockServer;
+
+	@BeforeEach
+	void setup() {
+		RestClient.Builder clientBuilder = RestClient.builder();
+		this.mockServer = MockRestServiceServer.createServer(clientBuilder);
+		this.restClient = clientBuilder.build();
+	}
 
 
 	@Test
-	public void exists() throws Exception {
+	void exists() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers[0]").exists())
@@ -85,7 +89,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void doesNotExist() throws Exception {
+	void doesNotExist() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers[?(@.name == 'Edvard Grieeeeeeg')]").doesNotExist())
@@ -97,7 +101,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void value() throws Exception {
+	void value() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers[0].name").value("Johann Sebastian Bach"))
@@ -108,7 +112,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void hamcrestMatchers() throws Exception {
+	void hamcrestMatchers() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers[0].name").value(equalTo("Johann Sebastian Bach")))
@@ -124,7 +128,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void hamcrestMatchersWithParameterizedJsonPaths() throws Exception {
+	void hamcrestMatchersWithParameterizedJsonPaths() {
 		String composerName = "$.composers[%s].name";
 		String performerName = "$.performers[%s].name";
 
@@ -140,7 +144,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void isArray() throws Exception {
+	void isArray() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers").isArray())
@@ -150,7 +154,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void isString() throws Exception {
+	void isString() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers[0].name").isString())
@@ -160,7 +164,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void isNumber() throws Exception {
+	void isNumber() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers[0].someDouble").isNumber())
@@ -170,7 +174,7 @@ public class JsonPathRequestMatchersIntegrationTests {
 	}
 
 	@Test
-	public void isBoolean() throws Exception {
+	void isBoolean() {
 		this.mockServer.expect(requestTo("/composers"))
 			.andExpect(content().contentType("application/json"))
 			.andExpect(jsonPath("$.composers[0].someBoolean").isBoolean())
@@ -179,8 +183,9 @@ public class JsonPathRequestMatchersIntegrationTests {
 		executeAndVerify();
 	}
 
-	private void executeAndVerify() throws URISyntaxException {
-		this.restTemplate.put(new URI("/composers"), people);
+	private void executeAndVerify() {
+		this.restClient.put().uri("/composers").contentType(MediaType.APPLICATION_JSON)
+				.body(people).retrieve().toBodilessEntity();
 		this.mockServer.verify();
 	}
 

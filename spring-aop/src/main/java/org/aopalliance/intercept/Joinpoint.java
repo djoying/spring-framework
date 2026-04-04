@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,14 @@ package org.aopalliance.intercept;
 
 import java.lang.reflect.AccessibleObject;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * This interface represents a generic runtime joinpoint (in the AOP
  * terminology).
  *
  * <p>A runtime joinpoint is an <i>event</i> that occurs on a static
- * joinpoint (i.e. a location in a the program). For instance, an
+ * joinpoint (i.e. a location in a program). For instance, an
  * invocation is the runtime joinpoint on a method (static joinpoint).
  * The static part of a given joinpoint can be generically retrieved
  * using the {@link #getStaticPart()} method.
@@ -49,23 +48,20 @@ public interface Joinpoint {
 	 * @return see the children interfaces' proceed definition
 	 * @throws Throwable if the joinpoint throws an exception
 	 */
-	@Nullable
-	Object proceed() throws Throwable;
+	@Nullable Object proceed() throws Throwable;
 
 	/**
 	 * Return the object that holds the current joinpoint's static part.
 	 * <p>For instance, the target object for an invocation.
 	 * @return the object (can be null if the accessible object is static)
 	 */
-	@Nullable
-	Object getThis();
+	@Nullable Object getThis();
 
 	/**
 	 * Return the static part of this joinpoint.
 	 * <p>The static part is an accessible object on which a chain of
-	 * interceptors are installed.
+	 * interceptors is installed.
 	 */
-	@Nonnull
 	AccessibleObject getStaticPart();
 
 }

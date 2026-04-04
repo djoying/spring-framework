@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import javax.inject.Named;
-import javax.inject.Singleton;
-
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,6 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ScopeMetadata;
-import org.springframework.context.annotation.ScopeMetadataResolver;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
@@ -85,7 +83,7 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 
 
 	@Test
-	void testPrototype() {
+	void prototype() {
 		ApplicationContext context = createContext(ScopedProxyMode.NO);
 		ScopedTestBean bean = (ScopedTestBean) context.getBean("prototype");
 		assertThat(bean).isNotNull();
@@ -94,7 +92,7 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testSingletonScopeWithNoProxy() {
+	void singletonScopeWithNoProxy() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributes);
 		ApplicationContext context = createContext(ScopedProxyMode.NO);
 		ScopedTestBean bean = (ScopedTestBean) context.getBean("singleton");
@@ -117,7 +115,7 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testSingletonScopeIgnoresProxyInterfaces() {
+	void singletonScopeIgnoresProxyInterfaces() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributes);
 		ApplicationContext context = createContext(ScopedProxyMode.INTERFACES);
 		ScopedTestBean bean = (ScopedTestBean) context.getBean("singleton");
@@ -138,7 +136,7 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testSingletonScopeIgnoresProxyTargetClass() {
+	void singletonScopeIgnoresProxyTargetClass() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributes);
 		ApplicationContext context = createContext(ScopedProxyMode.TARGET_CLASS);
 		ScopedTestBean bean = (ScopedTestBean) context.getBean("singleton");
@@ -159,7 +157,7 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testRequestScopeWithNoProxy() {
+	void requestScopeWithNoProxy() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributes);
 		ApplicationContext context = createContext(ScopedProxyMode.NO);
 		ScopedTestBean bean = (ScopedTestBean) context.getBean("request");
@@ -180,15 +178,14 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testRequestScopeWithProxiedInterfaces() {
+	void requestScopeWithProxiedInterfaces() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributes);
 		ApplicationContext context = createContext(ScopedProxyMode.INTERFACES);
 		IScopedTestBean bean = (IScopedTestBean) context.getBean("request");
 
 		// should be dynamic proxy, implementing both interfaces
 		assertThat(AopUtils.isJdkDynamicProxy(bean)).isTrue();
-		boolean condition = bean instanceof AnotherScopeTestInterface;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(AnotherScopeTestInterface.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -202,15 +199,14 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testRequestScopeWithProxiedTargetClass() {
+	void requestScopeWithProxiedTargetClass() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributes);
 		ApplicationContext context = createContext(ScopedProxyMode.TARGET_CLASS);
 		IScopedTestBean bean = (IScopedTestBean) context.getBean("request");
 
 		// should be a class-based proxy
 		assertThat(AopUtils.isCglibProxy(bean)).isTrue();
-		boolean condition = bean instanceof RequestScopedTestBean;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(RequestScopedTestBean.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -224,7 +220,7 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testSessionScopeWithNoProxy() {
+	void sessionScopeWithNoProxy() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributesWithSession);
 		ApplicationContext context = createContext(ScopedProxyMode.NO);
 		ScopedTestBean bean = (ScopedTestBean) context.getBean("session");
@@ -245,15 +241,14 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testSessionScopeWithProxiedInterfaces() {
+	void sessionScopeWithProxiedInterfaces() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributesWithSession);
 		ApplicationContext context = createContext(ScopedProxyMode.INTERFACES);
 		IScopedTestBean bean = (IScopedTestBean) context.getBean("session");
 
 		// should be dynamic proxy, implementing both interfaces
 		assertThat(AopUtils.isJdkDynamicProxy(bean)).isTrue();
-		boolean condition = bean instanceof AnotherScopeTestInterface;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(AnotherScopeTestInterface.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -273,17 +268,15 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 	@Test
-	void testSessionScopeWithProxiedTargetClass() {
+	void sessionScopeWithProxiedTargetClass() {
 		RequestContextHolder.setRequestAttributes(oldRequestAttributesWithSession);
 		ApplicationContext context = createContext(ScopedProxyMode.TARGET_CLASS);
 		IScopedTestBean bean = (IScopedTestBean) context.getBean("session");
 
 		// should be a class-based proxy
 		assertThat(AopUtils.isCglibProxy(bean)).isTrue();
-		boolean condition1 = bean instanceof ScopedTestBean;
-		assertThat(condition1).isTrue();
-		boolean condition = bean instanceof SessionScopedTestBean;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(ScopedTestBean.class);
+		assertThat(bean).isInstanceOf(SessionScopedTestBean.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -307,29 +300,25 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 		GenericWebApplicationContext context = new GenericWebApplicationContext();
 		ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(context);
 		scanner.setIncludeAnnotationConfig(false);
-		scanner.setScopeMetadataResolver(new ScopeMetadataResolver() {
-			@Override
-			public ScopeMetadata resolveScopeMetadata(BeanDefinition definition) {
-				ScopeMetadata metadata = new ScopeMetadata();
-				if (definition instanceof AnnotatedBeanDefinition) {
-					AnnotatedBeanDefinition annDef = (AnnotatedBeanDefinition) definition;
-					for (String type : annDef.getMetadata().getAnnotationTypes()) {
-						if (type.equals(javax.inject.Singleton.class.getName())) {
-							metadata.setScopeName(BeanDefinition.SCOPE_SINGLETON);
-							break;
-						}
-						else if (annDef.getMetadata().getMetaAnnotationTypes(type).contains(javax.inject.Scope.class.getName())) {
-							metadata.setScopeName(type.substring(type.length() - 13, type.length() - 6).toLowerCase());
-							metadata.setScopedProxyMode(scopedProxyMode);
-							break;
-						}
-						else if (type.startsWith("javax.inject")) {
-							metadata.setScopeName(BeanDefinition.SCOPE_PROTOTYPE);
-						}
+		scanner.setScopeMetadataResolver(definition -> {
+			ScopeMetadata metadata = new ScopeMetadata();
+			if (definition instanceof AnnotatedBeanDefinition annDef) {
+				for (String type : annDef.getMetadata().getAnnotationTypes()) {
+					if (type.equals(jakarta.inject.Singleton.class.getName())) {
+						metadata.setScopeName(BeanDefinition.SCOPE_SINGLETON);
+						break;
+					}
+					else if (annDef.getMetadata().getMetaAnnotationTypes(type).contains(jakarta.inject.Scope.class.getName())) {
+						metadata.setScopeName(type.substring(type.length() - 13, type.length() - 6).toLowerCase());
+						metadata.setScopedProxyMode(scopedProxyMode);
+						break;
+					}
+					else if (type.startsWith("jakarta.inject")) {
+						metadata.setScopeName(BeanDefinition.SCOPE_PROTOTYPE);
 					}
 				}
-				return metadata;
 			}
+			return metadata;
 		});
 
 		// Scan twice in order to find errors in the bean definition compatibility check.
@@ -350,7 +339,7 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 	}
 
 
-	public static abstract class ScopedTestBean implements IScopedTestBean {
+	public abstract static class ScopedTestBean implements IScopedTestBean {
 
 		private String name = DEFAULT_NAME;
 
@@ -391,14 +380,14 @@ class ClassPathBeanDefinitionScannerJsr330ScopeIntegrationTests {
 
 	@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE})
 	@Retention(RetentionPolicy.RUNTIME)
-	@javax.inject.Scope
+	@jakarta.inject.Scope
 	public @interface RequestScoped {
 	}
 
 
 	@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE})
 	@Retention(RetentionPolicy.RUNTIME)
-	@javax.inject.Scope
+	@jakarta.inject.Scope
 	public @interface SessionScoped {
 	}
 

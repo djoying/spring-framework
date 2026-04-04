@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ import org.springframework.core.annotation.SynthesizingMethodParameter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.handler.DestinationPatternsMessageCondition;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -71,7 +71,7 @@ import static org.mockito.Mockito.verify;
  * @author Stephane Nicoll
  */
 @ExtendWith(MockitoExtension.class)
-public class SendToMethodReturnValueHandlerTests {
+class SendToMethodReturnValueHandlerTests {
 
 	private static final MimeType MIME_TYPE = new MimeType("text", "plain", StandardCharsets.UTF_8);
 
@@ -122,19 +122,19 @@ public class SendToMethodReturnValueHandlerTests {
 
 
 	@BeforeEach
-	public void setup() throws Exception {
+	void setup() {
 		SimpMessagingTemplate messagingTemplate = new SimpMessagingTemplate(this.messageChannel);
 		messagingTemplate.setMessageConverter(new StringMessageConverter());
 		this.handler = new SendToMethodReturnValueHandler(messagingTemplate, true);
 		this.handlerAnnotationNotRequired = new SendToMethodReturnValueHandler(messagingTemplate, false);
 
 		SimpMessagingTemplate jsonMessagingTemplate = new SimpMessagingTemplate(this.messageChannel);
-		jsonMessagingTemplate.setMessageConverter(new MappingJackson2MessageConverter());
+		jsonMessagingTemplate.setMessageConverter(new JacksonJsonMessageConverter());
 		this.jsonHandler = new SendToMethodReturnValueHandler(jsonMessagingTemplate, true);
 	}
 
 	@Test
-	public void supportsReturnType() throws Exception {
+	void supportsReturnType() {
 		assertThat(this.handler.supportsReturnType(this.sendToReturnType)).isTrue();
 		assertThat(this.handler.supportsReturnType(this.sendToUserReturnType)).isTrue();
 		assertThat(this.handler.supportsReturnType(this.noAnnotationsReturnType)).isFalse();
@@ -150,7 +150,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToNoAnnotations() throws Exception {
+	void sendToNoAnnotations() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -162,7 +162,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendTo() throws Exception {
+	void sendTo() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -175,7 +175,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToDefaultDestination() throws Exception {
+	void sendToDefaultDestination() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -187,7 +187,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToClassDefaultNoAnnotation() throws Exception {
+	void sendToClassDefaultNoAnnotation() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -199,7 +199,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToClassDefaultEmptyAnnotation() throws Exception {
+	void sendToClassDefaultEmptyAnnotation() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -211,7 +211,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToClassDefaultOverride() throws Exception {
+	void sendToClassDefaultOverride() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -224,7 +224,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserClassDefaultNoAnnotation() throws Exception {
+	void sendToUserClassDefaultNoAnnotation() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -236,7 +236,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserClassDefaultEmptyAnnotation() throws Exception {
+	void sendToUserClassDefaultEmptyAnnotation() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -248,7 +248,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserClassDefaultOverride() throws Exception {
+	void sendToUserClassDefaultOverride() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -261,7 +261,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test // SPR-14238
-	public void sendToUserWithSendToDefaultOverride() throws Exception {
+	void sendToUserWithSendToDefaultOverride() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		Class<?> clazz = SendToUserWithSendToOverrideTestBean.class;
@@ -277,7 +277,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test // SPR-14238
-	public void sendToUserWithSendToOverride() throws Exception {
+	void sendToUserWithSendToOverride() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		Class<?> clazz = SendToUserWithSendToOverrideTestBean.class;
@@ -293,9 +293,67 @@ public class SendToMethodReturnValueHandlerTests {
 		assertResponse(parameter, sessionId, 1, "/dest4");
 	}
 
+	@Test
+	void sendToWithHeaderFilterSinglePredicate() throws Exception {
+		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
-	private void assertResponse(MethodParameter methodParameter, String sessionId,
-			int index, String destination) {
+		String sessionId = "sess1";
+		String headerName = "x-custom-header";
+		String headerValue = "custom-value";
+
+		SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create();
+		accessor.setSessionId(sessionId);
+		accessor.setSubscriptionId("sub1");
+		accessor.setNativeHeader(headerName, headerValue);
+		Message<?> inputMessage = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+		SimpMessagingTemplate template = new SimpMessagingTemplate(this.messageChannel);
+		SendToMethodReturnValueHandler handler = new SendToMethodReturnValueHandler(template, true);
+		handler.addHeaderFilter(name -> name.equals(headerName));
+
+		handler.handleReturnValue(PAYLOAD, this.sendToReturnType, inputMessage);
+
+		verify(this.messageChannel, times(2)).send(this.messageCaptor.capture());
+		for (Message<?> sent : this.messageCaptor.getAllValues()) {
+			accessor = MessageHeaderAccessor.getAccessor(sent, SimpMessageHeaderAccessor.class);
+			assertThat(accessor).isNotNull();
+			assertThat(accessor.getFirstNativeHeader(headerName)).isEqualTo(headerValue);
+		}
+	}
+
+	@Test
+	void sendToWithHeaderFilterMultiplePredicates() throws Exception {
+		given(this.messageChannel.send(any(Message.class))).willReturn(true);
+
+		String sessionId = "sess1";
+		String headerA = "x-header-a";
+		String headerB = "x-header-b";
+
+		SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create();
+		accessor.setSessionId(sessionId);
+		accessor.setSubscriptionId("sub1");
+		accessor.setNativeHeader(headerA, "A-value");
+		accessor.setNativeHeader(headerB, "B-value");
+		Message<?> inputMessage = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+
+		SimpMessagingTemplate template = new SimpMessagingTemplate(this.messageChannel);
+		SendToMethodReturnValueHandler handler = new SendToMethodReturnValueHandler(template, true);
+		handler.addHeaderFilter(name -> name.equals(headerA));
+		handler.addHeaderFilter(name -> name.equals(headerB));
+
+		handler.handleReturnValue(PAYLOAD, this.sendToReturnType, inputMessage);
+
+		verify(this.messageChannel, times(2)).send(this.messageCaptor.capture());
+		for (Message<?> sent : this.messageCaptor.getAllValues()) {
+			accessor = MessageHeaderAccessor.getAccessor(sent, SimpMessageHeaderAccessor.class);
+			assertThat(accessor).isNotNull();
+			assertThat(accessor.getFirstNativeHeader(headerA)).isEqualTo("A-value");
+			assertThat(accessor.getFirstNativeHeader(headerB)).isEqualTo("B-value");
+		}
+	}
+
+	private void assertResponse(
+			MethodParameter methodParameter, String sessionId, int index, String destination) {
 
 		SimpMessageHeaderAccessor accessor = getCapturedAccessor(index);
 		assertThat(accessor.getSessionId()).isEqualTo(sessionId);
@@ -306,7 +364,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToDefaultDestinationWhenUsingDotPathSeparator() throws Exception {
+	void sendToDefaultDestinationWhenUsingDotPathSeparator() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		Message<?> inputMessage = createMessage("sess1", "sub1", "/app/", "dest.foo.bar", null);
@@ -319,10 +377,10 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void testHeadersToSend() throws Exception {
+	void headersToSend() throws Exception {
 		Message<?> message = createMessage("sess1", "sub1", "/app", "/dest", null);
 
-		SimpMessageSendingOperations messagingTemplate = mock(SimpMessageSendingOperations.class);
+		SimpMessageSendingOperations messagingTemplate = mock();
 		SendToMethodReturnValueHandler handler = new SendToMethodReturnValueHandler(messagingTemplate, false);
 
 		handler.handleReturnValue(PAYLOAD, this.noAnnotationsReturnType, message);
@@ -341,7 +399,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUser() throws Exception {
+	void sendToUser() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -363,7 +421,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToAndSendToUser() throws Exception {
+	void sendToAndSendToUser() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -395,7 +453,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test  // SPR-12170
-	public void sendToWithDestinationPlaceholders() throws Exception {
+	void sendToWithDestinationPlaceholders() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		Map<String, String> vars = new LinkedHashMap<>(1);
@@ -417,7 +475,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserSingleSession() throws Exception {
+	void sendToUserSingleSession() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -443,7 +501,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserWithUserNameProvider() throws Exception {
+	void sendToUserWithUserNameProvider() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -461,7 +519,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserDefaultDestination() throws Exception {
+	void sendToUserDefaultDestination() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -478,7 +536,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserDefaultDestinationWhenUsingDotPathSeparator() throws Exception {
+	void sendToUserDefaultDestinationWhenUsingDotPathSeparator() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		TestUser user = new TestUser();
@@ -492,7 +550,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserDefaultDestinationSingleSession() throws Exception {
+	void sendToUserDefaultDestinationSingleSession() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -511,7 +569,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void sendToUserSessionWithoutUserName() throws Exception {
+	void sendToUserSessionWithoutUserName() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";
@@ -530,7 +588,7 @@ public class SendToMethodReturnValueHandlerTests {
 	}
 
 	@Test
-	public void jsonView() throws Exception {
+	void jsonView() throws Exception {
 		given(this.messageChannel.send(any(Message.class))).willReturn(true);
 
 		String sessionId = "sess1";

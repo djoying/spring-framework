@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
@@ -74,7 +73,7 @@ public abstract class MergedAnnotationPredicates {
 	 */
 	public static <A extends Annotation> Predicate<MergedAnnotation<? extends A>> typeIn(Collection<?> types) {
 		return annotation -> types.stream()
-				.map(type -> type instanceof Class ? ((Class<?>) type).getName() : type.toString())
+				.map(type -> type instanceof Class<?> clazz ? clazz.getName() : type.toString())
 				.anyMatch(typeName -> typeName.equals(annotation.getType().getName()));
 	}
 
@@ -125,7 +124,7 @@ public abstract class MergedAnnotationPredicates {
 
 		private boolean hasLastValue;
 
-		@Nullable
+		@SuppressWarnings("NullAway.Init")
 		private Object lastValue;
 
 		FirstRunOfPredicate(Function<? super MergedAnnotation<A>, ?> valueExtractor) {
@@ -134,7 +133,7 @@ public abstract class MergedAnnotationPredicates {
 		}
 
 		@Override
-		public boolean test(@Nullable MergedAnnotation<A> annotation) {
+		public boolean test(MergedAnnotation<A> annotation) {
 			if (!this.hasLastValue) {
 				this.hasLastValue = true;
 				this.lastValue = this.valueExtractor.apply(annotation);
@@ -162,7 +161,7 @@ public abstract class MergedAnnotationPredicates {
 		}
 
 		@Override
-		public boolean test(@Nullable MergedAnnotation<A> annotation) {
+		public boolean test(MergedAnnotation<A> annotation) {
 			K key = this.keyExtractor.apply(annotation);
 			return this.seen.add(key);
 		}

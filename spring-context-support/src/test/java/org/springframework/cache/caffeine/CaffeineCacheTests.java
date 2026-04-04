@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ class CaffeineCacheTests extends AbstractValueAdaptingCacheTests<CaffeineCache> 
 
 	@Override
 	protected CaffeineCache getCache(boolean allowNull) {
-		return allowNull ? this.cache : this.cacheNoNull;
+		return (allowNull ? this.cache : this.cacheNoNull);
 	}
 
 	@Override
@@ -66,7 +66,7 @@ class CaffeineCacheTests extends AbstractValueAdaptingCacheTests<CaffeineCache> 
 	}
 
 	@Test
-	void testLoadingCacheGet() {
+	void loadingCacheGet() {
 		Object value = new Object();
 		CaffeineCache loadingCache = new CaffeineCache(CACHE_NAME, Caffeine.newBuilder()
 				.build(key -> value));
@@ -76,7 +76,7 @@ class CaffeineCacheTests extends AbstractValueAdaptingCacheTests<CaffeineCache> 
 	}
 
 	@Test
-	void testLoadingCacheGetWithType() {
+	void loadingCacheGetWithType() {
 		String value = "value";
 		CaffeineCache loadingCache = new CaffeineCache(CACHE_NAME, Caffeine.newBuilder()
 				.build(key -> value));
@@ -86,7 +86,7 @@ class CaffeineCacheTests extends AbstractValueAdaptingCacheTests<CaffeineCache> 
 	}
 
 	@Test
-	void testLoadingCacheGetWithWrongType() {
+	void loadingCacheGetWithWrongType() {
 		String value = "value";
 		CaffeineCache loadingCache = new CaffeineCache(CACHE_NAME, Caffeine.newBuilder()
 				.build(key -> value));
@@ -94,7 +94,7 @@ class CaffeineCacheTests extends AbstractValueAdaptingCacheTests<CaffeineCache> 
 	}
 
 	@Test
-	void testPutIfAbsentNullValue() {
+	void putIfAbsentNullValue() {
 		CaffeineCache cache = getCache();
 
 		Object key = new Object();
@@ -106,7 +106,7 @@ class CaffeineCacheTests extends AbstractValueAdaptingCacheTests<CaffeineCache> 
 		Cache.ValueWrapper wrapper = cache.putIfAbsent(key, "anotherValue");
 		// A value is set but is 'null'
 		assertThat(wrapper).isNotNull();
-		assertThat(wrapper.get()).isEqualTo(null);
+		assertThat(wrapper.get()).isNull();
 		// not changed
 		assertThat(cache.get(key).get()).isEqualTo(value);
 	}

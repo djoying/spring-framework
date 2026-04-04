@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,19 +25,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
-import org.reactivestreams.Publisher;
-
-import org.springframework.core.ReactiveAdapter;
-import org.springframework.core.ReactiveAdapterRegistry;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.context.request.async.AsyncWebRequest;
@@ -54,19 +49,19 @@ import org.springframework.web.servlet.ModelAndView;
  */
 final class DefaultAsyncServerResponse extends ErrorHandlingServerResponse implements AsyncServerResponse {
 
-	static final boolean reactiveStreamsPresent = ClassUtils.isPresent(
+	static final boolean REACTIVE_STREAMS_PRESENT = ClassUtils.isPresent(
 			"org.reactivestreams.Publisher", DefaultAsyncServerResponse.class.getClassLoader());
 
 	private final CompletableFuture<ServerResponse> futureResponse;
 
-	@Nullable
-	private final Duration timeout;
+	private final @Nullable Duration timeout;
 
 
-	private DefaultAsyncServerResponse(CompletableFuture<ServerResponse> futureResponse, @Nullable Duration timeout) {
+	DefaultAsyncServerResponse(CompletableFuture<ServerResponse> futureResponse, @Nullable Duration timeout) {
 		this.futureResponse = futureResponse;
 		this.timeout = timeout;
 	}
+
 
 	@Override
 	public ServerResponse block() {
@@ -84,13 +79,8 @@ final class DefaultAsyncServerResponse extends ErrorHandlingServerResponse imple
 	}
 
 	@Override
-	public HttpStatus statusCode() {
+	public HttpStatusCode statusCode() {
 		return delegate(ServerResponse::statusCode);
-	}
-
-	@Override
-	public int rawStatusCode() {
-		return delegate(ServerResponse::rawStatusCode);
 	}
 
 	@Override
@@ -113,12 +103,11 @@ final class DefaultAsyncServerResponse extends ErrorHandlingServerResponse imple
 		}
 	}
 
-	@Nullable
 	@Override
-	public ModelAndView writeTo(HttpServletRequest request, HttpServletResponse response, Context context)
+	public @Nullable ModelAndView writeTo(HttpServletRequest request, HttpServletResponse response, Context context)
 			throws ServletException, IOException {
 
-		writeAsync(request, response, createDeferredResult());
+		writeAsync(request, response, createDeferredResult(request));
 		return null;
 	}
 
@@ -140,7 +129,7 @@ final class DefaultAsyncServerResponse extends ErrorHandlingServerResponse imple
 
 	}
 
-	private DeferredResult<ServerResponse> createDeferredResult() {
+	private DeferredResult<ServerResponse> createDeferredResult(HttpServletRequest request) {
 		DeferredResult<ServerResponse> result;
 		if (this.timeout != null) {
 			result = new DeferredResult<>(this.timeout.toMillis());
@@ -148,44 +137,24 @@ final class DefaultAsyncServerResponse extends ErrorHandlingServerResponse imple
 		else {
 			result = new DeferredResult<>();
 		}
-		this.futureResponse.handle((value, ex) -> {
+		this.futureResponse.whenComplete((value, ex) -> {
 			if (ex != null) {
 				if (ex instanceof CompletionException && ex.getCause() != null) {
 					ex = ex.getCause();
 				}
-				result.setErrorResult(ex);
+				ServerResponse errorResponse = errorResponse(ex, request);
+				if (errorResponse != null) {
+					result.setResult(errorResponse);
+				}
+				else {
+					result.setErrorResult(ex);
+				}
 			}
 			else {
 				result.setResult(value);
 			}
-			return null;
 		});
 		return result;
 	}
-
-	@SuppressWarnings({"unchecked"})
-	public static AsyncServerResponse create(Object o, @Nullable Duration timeout) {
-		Assert.notNull(o, "Argument to async must not be null");
-
-		if (o instanceof CompletableFuture) {
-			CompletableFuture<ServerResponse> futureResponse = (CompletableFuture<ServerResponse>) o;
-			return new DefaultAsyncServerResponse(futureResponse, timeout);
-		}
-		else if (reactiveStreamsPresent) {
-			ReactiveAdapterRegistry registry = ReactiveAdapterRegistry.getSharedInstance();
-			ReactiveAdapter publisherAdapter = registry.getAdapter(o.getClass());
-			if (publisherAdapter != null) {
-				Publisher<ServerResponse> publisher = publisherAdapter.toPublisher(o);
-				ReactiveAdapter futureAdapter = registry.getAdapter(CompletableFuture.class);
-				if (futureAdapter != null) {
-					CompletableFuture<ServerResponse> futureResponse =
-							(CompletableFuture<ServerResponse>) futureAdapter.fromPublisher(publisher);
-					return new DefaultAsyncServerResponse(futureResponse, timeout);
-				}
-			}
-		}
-		throw new IllegalArgumentException("Asynchronous type not supported: " + o.getClass());
-	}
-
 
 }

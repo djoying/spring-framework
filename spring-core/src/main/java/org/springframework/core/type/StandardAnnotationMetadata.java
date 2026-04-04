@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,14 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.annotation.MergedAnnotations.SearchStrategy;
 import org.springframework.core.annotation.RepeatableContainers;
-import org.springframework.lang.Nullable;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.ReflectionUtils;
 
@@ -50,17 +51,16 @@ public class StandardAnnotationMetadata extends StandardClassMetadata implements
 
 	private final boolean nestedAnnotationsAsMap;
 
-	@Nullable
-	private Set<String> annotationTypes;
+	private @Nullable Set<String> annotationTypes;
 
 
 	/**
 	 * Create a new {@code StandardAnnotationMetadata} wrapper for the given Class.
 	 * @param introspectedClass the Class to introspect
 	 * @see #StandardAnnotationMetadata(Class, boolean)
-	 * @deprecated since 5.2 in favor of the factory method {@link AnnotationMetadata#introspect(Class)}
+	 * @deprecated in favor of the factory method {@link AnnotationMetadata#introspect(Class)}
 	 */
-	@Deprecated
+	@Deprecated(since = "5.2")
 	public StandardAnnotationMetadata(Class<?> introspectedClass) {
 		this(introspectedClass, false);
 	}
@@ -75,12 +75,12 @@ public class StandardAnnotationMetadata extends StandardClassMetadata implements
 	 * {@link org.springframework.core.annotation.AnnotationAttributes} for compatibility
 	 * with ASM-based {@link AnnotationMetadata} implementations
 	 * @since 3.1.1
-	 * @deprecated since 5.2 in favor of the factory method {@link AnnotationMetadata#introspect(Class)}.
+	 * @deprecated in favor of the factory method {@link AnnotationMetadata#introspect(Class)}.
 	 * Use {@link MergedAnnotation#asMap(org.springframework.core.annotation.MergedAnnotation.Adapt...) MergedAnnotation.asMap}
 	 * from {@link #getAnnotations()} rather than {@link #getAnnotationAttributes(String)}
 	 * if {@code nestedAnnotationsAsMap} is {@code false}
 	 */
-	@Deprecated
+	@Deprecated(since = "5.2")
 	public StandardAnnotationMetadata(Class<?> introspectedClass, boolean nestedAnnotationsAsMap) {
 		super(introspectedClass);
 		this.mergedAnnotations = MergedAnnotations.from(introspectedClass,
@@ -105,8 +105,7 @@ public class StandardAnnotationMetadata extends StandardClassMetadata implements
 	}
 
 	@Override
-	@Nullable
-	public Map<String, Object> getAnnotationAttributes(String annotationName, boolean classValuesAsString) {
+	public @Nullable Map<String, @Nullable Object> getAnnotationAttributes(String annotationName, boolean classValuesAsString) {
 		if (this.nestedAnnotationsAsMap) {
 			return AnnotationMetadata.super.getAnnotationAttributes(annotationName, classValuesAsString);
 		}
@@ -115,8 +114,8 @@ public class StandardAnnotationMetadata extends StandardClassMetadata implements
 	}
 
 	@Override
-	@Nullable
-	public MultiValueMap<String, Object> getAllAnnotationAttributes(String annotationName, boolean classValuesAsString) {
+	@SuppressWarnings("NullAway") // Null-safety of Java super method not yet managed
+	public @Nullable MultiValueMap<String, @Nullable Object> getAllAnnotationAttributes(String annotationName, boolean classValuesAsString) {
 		if (this.nestedAnnotationsAsMap) {
 			return AnnotationMetadata.super.getAllAnnotationAttributes(annotationName, classValuesAsString);
 		}
@@ -143,33 +142,31 @@ public class StandardAnnotationMetadata extends StandardClassMetadata implements
 	}
 
 	@Override
-	@SuppressWarnings("deprecation")
 	public Set<MethodMetadata> getAnnotatedMethods(String annotationName) {
-		Set<MethodMetadata> annotatedMethods = null;
+		Set<MethodMetadata> result = new LinkedHashSet<>(4);
 		if (AnnotationUtils.isCandidateClass(getIntrospectedClass(), annotationName)) {
-			try {
-				Method[] methods = ReflectionUtils.getDeclaredMethods(getIntrospectedClass());
-				for (Method method : methods) {
-					if (isAnnotatedMethod(method, annotationName)) {
-						if (annotatedMethods == null) {
-							annotatedMethods = new LinkedHashSet<>(4);
-						}
-						annotatedMethods.add(new StandardMethodMetadata(method, this.nestedAnnotationsAsMap));
-					}
+			ReflectionUtils.doWithLocalMethods(getIntrospectedClass(), method -> {
+				if (isAnnotatedMethod(method, annotationName)) {
+					result.add(new StandardMethodMetadata(method, this.nestedAnnotationsAsMap));
 				}
-			}
-			catch (Throwable ex) {
-				throw new IllegalStateException("Failed to introspect annotated methods on " + getIntrospectedClass(), ex);
-			}
+			});
 		}
-		return annotatedMethods != null ? annotatedMethods : Collections.emptySet();
+		return result;
 	}
 
-	private boolean isAnnotatedMethod(Method method, String annotationName) {
+	@Override
+	public Set<MethodMetadata> getDeclaredMethods() {
+		Set<MethodMetadata> result = new LinkedHashSet<>(16);
+		ReflectionUtils.doWithLocalMethods(getIntrospectedClass(), method ->
+				result.add(new StandardMethodMetadata(method, this.nestedAnnotationsAsMap)));
+		return result;
+	}
+
+
+	private static boolean isAnnotatedMethod(Method method, String annotationName) {
 		return !method.isBridge() && method.getAnnotations().length > 0 &&
 				AnnotatedElementUtils.isAnnotated(method, annotationName);
 	}
-
 
 	static AnnotationMetadata from(Class<?> introspectedClass) {
 		return new StandardAnnotationMetadata(introspectedClass, true);

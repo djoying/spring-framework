@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.springframework.util.StreamUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.mock;
@@ -38,17 +39,17 @@ import static org.mockito.Mockito.verify;
  * @author Brian Clozel
  * @author Juergen Hoeller
  */
-public class SimpleClientHttpResponseTests {
+class SimpleClientHttpResponseTests {
 
-	private final HttpURLConnection connection = mock(HttpURLConnection.class);
+	private final HttpURLConnection connection = mock();
 
 	private final SimpleClientHttpResponse response = new SimpleClientHttpResponse(this.connection);
 
 
 	@Test  // SPR-14040
-	public void shouldNotCloseConnectionWhenResponseClosed() throws Exception {
+	void shouldNotCloseConnectionWhenResponseClosed() throws Exception {
 		TestByteArrayInputStream is = new TestByteArrayInputStream("Spring".getBytes(StandardCharsets.UTF_8));
-		given(this.connection.getErrorStream()).willReturn(null);
+		given(this.connection.getResponseCode()).willReturn(200);
 		given(this.connection.getInputStream()).willReturn(is);
 
 		InputStream responseStream = this.response.getBody();
@@ -60,10 +61,10 @@ public class SimpleClientHttpResponseTests {
 	}
 
 	@Test  // SPR-14040
-	public void shouldDrainStreamWhenResponseClosed() throws Exception {
+	void shouldDrainStreamWhenResponseClosed() throws Exception {
 		byte[] buf = new byte[6];
 		TestByteArrayInputStream is = new TestByteArrayInputStream("SpringSpring".getBytes(StandardCharsets.UTF_8));
-		given(this.connection.getErrorStream()).willReturn(null);
+		given(this.connection.getResponseCode()).willReturn(200);
 		given(this.connection.getInputStream()).willReturn(is);
 
 		InputStream responseStream = this.response.getBody();
@@ -78,9 +79,10 @@ public class SimpleClientHttpResponseTests {
 	}
 
 	@Test  // SPR-14040
-	public void shouldDrainErrorStreamWhenResponseClosed() throws Exception {
+	void shouldDrainErrorStreamWhenResponseClosed() throws Exception {
 		byte[] buf = new byte[6];
 		TestByteArrayInputStream is = new TestByteArrayInputStream("SpringSpring".getBytes(StandardCharsets.UTF_8));
+		given(this.connection.getResponseCode()).willReturn(404);
 		given(this.connection.getErrorStream()).willReturn(is);
 
 		InputStream responseStream = this.response.getBody();
@@ -95,11 +97,15 @@ public class SimpleClientHttpResponseTests {
 	}
 
 	@Test  // SPR-16773
-	public void shouldNotDrainWhenErrorStreamClosed() throws Exception {
-		InputStream is = mock(InputStream.class);
+	void shouldNotDrainWhenErrorStreamClosed() throws Exception {
+		InputStream is = mock();
+		given(this.connection.getResponseCode()).willReturn(404);
 		given(this.connection.getErrorStream()).willReturn(is);
 		willDoNothing().given(is).close();
-		given(is.read(any())).willThrow(new NullPointerException("from HttpURLConnection#ErrorStream"));
+		given(is.transferTo(any())).willCallRealMethod();
+		given(is.read(any(), anyInt(), anyInt())).willThrow(new NullPointerException("from HttpURLConnection#ErrorStream"));
+
+		is.readAllBytes();
 
 		InputStream responseStream = this.response.getBody();
 		responseStream.close();
@@ -109,9 +115,9 @@ public class SimpleClientHttpResponseTests {
 	}
 
 	@Test // SPR-17181
-	public void shouldDrainResponseEvenIfResponseNotRead() throws Exception {
+	void shouldDrainResponseEvenIfResponseNotRead() throws Exception {
 		TestByteArrayInputStream is = new TestByteArrayInputStream("SpringSpring".getBytes(StandardCharsets.UTF_8));
-		given(this.connection.getErrorStream()).willReturn(null);
+		given(this.connection.getResponseCode()).willReturn(200);
 		given(this.connection.getInputStream()).willReturn(is);
 
 		this.response.close();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,16 +30,16 @@ import org.springframework.http.client.ClientHttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-
 /**
  * Tests for {@link InterceptingHttpAccessor}.
  *
  * @author Brian Clozel
  */
-public class InterceptingHttpAccessorTests {
+@SuppressWarnings("removal")
+class InterceptingHttpAccessorTests {
 
 	@Test
-	public void getInterceptors() {
+	void getInterceptors() {
 		TestInterceptingHttpAccessor accessor = new TestInterceptingHttpAccessor();
 		List<ClientHttpRequestInterceptor> interceptors = Arrays.asList(
 				new SecondClientHttpRequestInterceptor(),
@@ -48,19 +48,19 @@ public class InterceptingHttpAccessorTests {
 
 		);
 		accessor.setInterceptors(interceptors);
-
-		assertThat(accessor.getInterceptors().get(0)).isInstanceOf(FirstClientHttpRequestInterceptor.class);
-		assertThat(accessor.getInterceptors().get(1)).isInstanceOf(SecondClientHttpRequestInterceptor.class);
-		assertThat(accessor.getInterceptors().get(2)).isInstanceOf(ThirdClientHttpRequestInterceptor.class);
+		assertThat(accessor.getInterceptors()).hasExactlyElementsOfTypes(
+				FirstClientHttpRequestInterceptor.class,
+				SecondClientHttpRequestInterceptor.class,
+				ThirdClientHttpRequestInterceptor.class);
 	}
 
 
-	private class TestInterceptingHttpAccessor extends InterceptingHttpAccessor {
+	private static class TestInterceptingHttpAccessor extends InterceptingHttpAccessor {
 	}
 
 
 	@Order(1)
-	private class FirstClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
+	private static class FirstClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
 
 		@Override
 		public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) {
@@ -69,7 +69,7 @@ public class InterceptingHttpAccessorTests {
 	}
 
 
-	private class SecondClientHttpRequestInterceptor implements ClientHttpRequestInterceptor, Ordered {
+	private static class SecondClientHttpRequestInterceptor implements ClientHttpRequestInterceptor, Ordered {
 
 		@Override
 		public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) {
@@ -83,7 +83,7 @@ public class InterceptingHttpAccessorTests {
 	}
 
 
-	private class ThirdClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
+	private static class ThirdClientHttpRequestInterceptor implements ClientHttpRequestInterceptor {
 
 		@Override
 		public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) {

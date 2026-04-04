@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,13 @@ package org.springframework.web.reactive.function.server;
 
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.Nullable;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer;
 import org.springframework.web.util.pattern.PathPattern;
 
@@ -41,8 +40,6 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
  * @author Arjen Poutsma
  */
 class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests {
-
-	private final RestTemplate restTemplate = new RestTemplate();
 
 
 	@Override
@@ -64,8 +61,8 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 	void bar(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ResponseEntity<String> result =
-				restTemplate.getForEntity("http://localhost:" + port + "/foo/bar", String.class);
+		ResponseEntity<String> result = getRestClient().get().uri("http://localhost:" + port + "/foo/bar")
+				.retrieve().toEntity(String.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isEqualTo("/foo/bar");
@@ -75,8 +72,8 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 	void baz(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ResponseEntity<String> result =
-				restTemplate.getForEntity("http://localhost:" + port + "/foo/baz", String.class);
+		ResponseEntity<String> result = getRestClient().get().uri("http://localhost:" + port + "/foo/baz")
+				.retrieve().toEntity(String.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isEqualTo("/foo/baz");
@@ -86,11 +83,15 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 	void variables(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ResponseEntity<String> result =
-				restTemplate.getForEntity("http://localhost:" + port + "/1/2/3", String.class);
+		ResponseEntity<String> result = getRestClient().get().uri("http://localhost:" + port + "/1/2/3")
+				.retrieve().toEntity(String.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(result.getBody()).isEqualTo("/{foo}/{bar}/{baz}\n{foo=1, bar=2, baz=3}");
+		String body = result.getBody();
+		assertThat(body).startsWith("/{foo}/{bar}/{baz}");
+		assertThat(body).contains("foo=1");
+		assertThat(body).contains("bar=2");
+		assertThat(body).contains("baz=3");
 	}
 
 	// SPR-16868
@@ -98,8 +99,8 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 	void parentVariables(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ResponseEntity<String> result =
-				restTemplate.getForEntity("http://localhost:" + port + "/1/bar", String.class);
+		ResponseEntity<String> result = getRestClient().get().uri("http://localhost:" + port + "/1/bar")
+				.retrieve().toEntity(String.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isEqualTo("/{foo}/bar\n{foo=1}");
@@ -111,8 +112,8 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 	void removeFailedNestedPathVariables(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ResponseEntity<String> result =
-				restTemplate.getForEntity("http://localhost:" + port + "/qux/quux", String.class);
+		ResponseEntity<String> result = getRestClient().get().uri("http://localhost:" + port + "/qux/quux")
+				.retrieve().toEntity(String.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isEqualTo("/{qux}/quux\n{qux=qux}");
@@ -124,8 +125,8 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 	void removeFailedPathVariablesAnd(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ResponseEntity<String> result =
-				restTemplate.postForEntity("http://localhost:" + port + "/qux/quux", "", String.class);
+		ResponseEntity<String> result = getRestClient().post().uri("http://localhost:" + port + "/qux/quux")
+				.retrieve().toEntity(String.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody()).isEqualTo("{}");
@@ -145,8 +146,8 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 			Map<String, String> pathVariables = request.pathVariables();
 			Map<String, String> attributePathVariables =
 					(Map<String, String>) request.attributes().get(RouterFunctions.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
-			assertThat((pathVariables.equals(attributePathVariables))
-						|| (pathVariables.isEmpty() && (attributePathVariables == null))).isTrue();
+			assertThat((pathVariables.equals(attributePathVariables)) ||
+					(pathVariables.isEmpty() && (attributePathVariables == null))).isTrue();
 
 			PathPattern pathPattern = matchingPattern(request);
 			String pattern = pathPattern != null ? pathPattern.getPatternString() : "";
@@ -160,8 +161,7 @@ class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrationTests
 			return ServerResponse.ok().body(responseBody, String.class);
 		}
 
-		@Nullable
-		private PathPattern matchingPattern(ServerRequest request) {
+		private @Nullable PathPattern matchingPattern(ServerRequest request) {
 			return (PathPattern) request.attributes().get(RouterFunctions.MATCHING_PATTERN_ATTRIBUTE);
 		}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.aop.framework;
 
 import java.io.Serializable;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -34,15 +36,15 @@ public class ProxyConfig implements Serializable {
 	private static final long serialVersionUID = -8409359707199703185L;
 
 
-	private boolean proxyTargetClass = false;
+	private @Nullable Boolean proxyTargetClass;
 
-	private boolean optimize = false;
+	private @Nullable Boolean optimize;
 
-	boolean opaque = false;
+	private @Nullable Boolean opaque;
 
-	boolean exposeProxy = false;
+	private @Nullable Boolean exposeProxy;
 
-	private boolean frozen = false;
+	private @Nullable Boolean frozen;
 
 
 	/**
@@ -65,7 +67,7 @@ public class ProxyConfig implements Serializable {
 	 * Return whether to proxy the target class directly as well as any interfaces.
 	 */
 	public boolean isProxyTargetClass() {
-		return this.proxyTargetClass;
+		return (this.proxyTargetClass != null && this.proxyTargetClass);
 	}
 
 	/**
@@ -73,11 +75,9 @@ public class ProxyConfig implements Serializable {
 	 * The exact meaning of "aggressive optimizations" will differ
 	 * between proxies, but there is usually some tradeoff.
 	 * Default is "false".
-	 * <p>For example, optimization will usually mean that advice changes won't
-	 * take effect after a proxy has been created. For this reason, optimization
-	 * is disabled by default. An optimize value of "true" may be ignored
-	 * if other settings preclude optimization: for example, if "exposeProxy"
-	 * is set to "true" and that's not compatible with the optimization.
+	 * <p>With Spring's current proxy options, this flag effectively
+	 * enforces CGLIB proxies (similar to {@link #setProxyTargetClass})
+	 * but without any class validation checks (for final methods etc).
 	 */
 	public void setOptimize(boolean optimize) {
 		this.optimize = optimize;
@@ -87,7 +87,7 @@ public class ProxyConfig implements Serializable {
 	 * Return whether proxies should perform aggressive optimizations.
 	 */
 	public boolean isOptimize() {
-		return this.optimize;
+		return (this.optimize != null && this.optimize);
 	}
 
 	/**
@@ -105,7 +105,7 @@ public class ProxyConfig implements Serializable {
 	 * prevented from being cast to {@link Advised}.
 	 */
 	public boolean isOpaque() {
-		return this.opaque;
+		return (this.opaque != null && this.opaque);
 	}
 
 	/**
@@ -126,7 +126,7 @@ public class ProxyConfig implements Serializable {
 	 * each invocation.
 	 */
 	public boolean isExposeProxy() {
-		return this.exposeProxy;
+		return (this.exposeProxy != null && this.exposeProxy);
 	}
 
 	/**
@@ -143,7 +143,7 @@ public class ProxyConfig implements Serializable {
 	 * Return whether the config is frozen, and no advice changes can be made.
 	 */
 	public boolean isFrozen() {
-		return this.frozen;
+		return (this.frozen != null && this.frozen);
 	}
 
 
@@ -155,9 +155,34 @@ public class ProxyConfig implements Serializable {
 		Assert.notNull(other, "Other ProxyConfig object must not be null");
 		this.proxyTargetClass = other.proxyTargetClass;
 		this.optimize = other.optimize;
+		this.opaque = other.opaque;
 		this.exposeProxy = other.exposeProxy;
 		this.frozen = other.frozen;
-		this.opaque = other.opaque;
+	}
+
+	/**
+	 * Copy default settings from the other config object,
+	 * for settings that have not been locally set.
+	 * @param other object to copy configuration from
+	 * @since 7.0
+	 */
+	public void copyDefault(ProxyConfig other) {
+		Assert.notNull(other, "Other ProxyConfig object must not be null");
+		if (this.proxyTargetClass == null) {
+			this.proxyTargetClass = other.proxyTargetClass;
+		}
+		if (this.optimize == null) {
+			this.optimize = other.optimize;
+		}
+		if (this.opaque == null) {
+			this.opaque = other.opaque;
+		}
+		if (this.exposeProxy == null) {
+			this.exposeProxy = other.exposeProxy;
+		}
+		if (this.frozen == null) {
+			this.frozen = other.frozen;
+		}
 	}
 
 	@Override

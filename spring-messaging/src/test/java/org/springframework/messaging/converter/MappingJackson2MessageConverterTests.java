@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,10 +43,11 @@ import static org.assertj.core.api.Assertions.within;
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
  */
-public class MappingJackson2MessageConverterTests {
+@SuppressWarnings("removal")
+class MappingJackson2MessageConverterTests {
 
 	@Test
-	public void defaultConstructor() {
+	void defaultConstructor() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		assertThat(converter.getSupportedMimeTypes()).contains(new MimeType("application", "json"));
 		assertThat(converter.getObjectMapper().getDeserializationConfig()
@@ -54,7 +55,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test  // SPR-12724
-	public void mimetypeParametrizedConstructor() {
+	void mimetypeParametrizedConstructor() {
 		MimeType mimetype = new MimeType("application", "xml", StandardCharsets.UTF_8);
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter(mimetype);
 		assertThat(converter.getSupportedMimeTypes()).contains(mimetype);
@@ -63,7 +64,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test  // SPR-12724
-	public void mimetypesParametrizedConstructor() {
+	void mimetypesParametrizedConstructor() {
 		MimeType jsonMimetype = new MimeType("application", "json", StandardCharsets.UTF_8);
 		MimeType xmlMimetype = new MimeType("application", "xml", StandardCharsets.UTF_8);
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter(jsonMimetype, xmlMimetype);
@@ -73,7 +74,23 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test
-	public void fromMessage() {
+	void supportJsonMimeType() {
+		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
+		Message<String> message = MessageBuilder.withPayload("foo")
+				.setHeader(MessageHeaders.CONTENT_TYPE, "application/json").build();
+		assertThat(converter.supportsMimeType(message.getHeaders())).isTrue();
+	}
+
+	@Test
+	void supportVendorJsonMimeTypes() {
+		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
+		Message<String> message = MessageBuilder.withPayload("foo")
+				.setHeader(MessageHeaders.CONTENT_TYPE, "application/vnd.springframework.type+json").build();
+		assertThat(converter.supportsMimeType(message.getHeaders())).isTrue();
+	}
+
+	@Test
+	void fromMessage() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		String payload = "{\"bytes\":\"AQI=\",\"array\":[\"Foo\",\"Bar\"]," +
 				"\"number\":42,\"string\":\"Foo\",\"bool\":true,\"fraction\":42.0}";
@@ -89,7 +106,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test
-	public void fromMessageUntyped() {
+	void fromMessageUntyped() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		String payload = "{\"bytes\":\"AQI=\",\"array\":[\"Foo\",\"Bar\"]," +
 				"\"number\":42,\"string\":\"Foo\",\"bool\":true,\"fraction\":42.0}";
@@ -106,7 +123,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test  // gh-22386
-	public void fromMessageMatchingInstance() {
+	void fromMessageMatchingInstance() {
 		MyBean myBean = new MyBean();
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		Message<?> message = MessageBuilder.withPayload(myBean).build();
@@ -114,7 +131,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test
-	public void fromMessageInvalidJson() {
+	void fromMessageInvalidJson() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		String payload = "FooBar";
 		Message<?> message = MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
@@ -123,7 +140,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test
-	public void fromMessageValidJsonWithUnknownProperty() {
+	void fromMessageValidJsonWithUnknownProperty() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		String payload = "{\"string\":\"string\",\"unknownProperty\":\"value\"}";
 		Message<?> message = MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
@@ -132,7 +149,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test  // SPR-16252
-	public void fromMessageToList() throws Exception {
+	void fromMessageToList() throws Exception {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		String payload = "[1, 2, 3, 4, 5, 6, 7, 8, 9]";
 		Message<?> message = MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
@@ -146,7 +163,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test  // SPR-16486
-	public void fromMessageToMessageWithPojo() throws Exception {
+	void fromMessageToMessageWithPojo() throws Exception {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		String payload = "{\"string\":\"foo\"}";
 		Message<?> message = MessageBuilder.withPayload(payload.getBytes(StandardCharsets.UTF_8)).build();
@@ -155,12 +172,12 @@ public class MappingJackson2MessageConverterTests {
 		MethodParameter param = new MethodParameter(method, 0);
 		Object actual = converter.fromMessage(message, MyBean.class, param);
 
-		assertThat(actual instanceof MyBean).isTrue();
+		assertThat(actual).isInstanceOf(MyBean.class);
 		assertThat(((MyBean) actual).getString()).isEqualTo("foo");
 	}
 
 	@Test
-	public void toMessage() {
+	void toMessage() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		MyBean payload = new MyBean();
 		payload.setString("Foo");
@@ -173,17 +190,17 @@ public class MappingJackson2MessageConverterTests {
 		Message<?> message = converter.toMessage(payload, null);
 		String actual = new String((byte[]) message.getPayload(), StandardCharsets.UTF_8);
 
-		assertThat(actual.contains("\"string\":\"Foo\"")).isTrue();
-		assertThat(actual.contains("\"number\":42")).isTrue();
-		assertThat(actual.contains("fraction\":42.0")).isTrue();
-		assertThat(actual.contains("\"array\":[\"Foo\",\"Bar\"]")).isTrue();
-		assertThat(actual.contains("\"bool\":true")).isTrue();
-		assertThat(actual.contains("\"bytes\":\"AQI=\"")).isTrue();
+		assertThat(actual).contains("\"string\":\"Foo\"");
+		assertThat(actual).contains("\"number\":42");
+		assertThat(actual).contains("fraction\":42.0");
+		assertThat(actual).contains("\"array\":[\"Foo\",\"Bar\"]");
+		assertThat(actual).contains("\"bool\":true");
+		assertThat(actual).contains("\"bytes\":\"AQI=\"");
 		assertThat(message.getHeaders().get(MessageHeaders.CONTENT_TYPE, MimeType.class)).as("Invalid content-type").isEqualTo(new MimeType("application", "json"));
 	}
 
 	@Test
-	public void toMessageUtf16() {
+	void toMessageUtf16() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		MimeType contentType = new MimeType("application", "json", StandardCharsets.UTF_16BE);
 		Map<String, Object> map = new HashMap<>();
@@ -197,7 +214,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test
-	public void toMessageUtf16String() {
+	void toMessageUtf16String() {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 		converter.setSerializedPayloadClass(String.class);
 
@@ -213,7 +230,7 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 	@Test
-	public void toMessageJsonView() throws Exception {
+	void toMessageJsonView() throws Exception {
 		MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
 
 		Map<String, Object> map = new HashMap<>();
@@ -319,9 +336,9 @@ public class MappingJackson2MessageConverterTests {
 	}
 
 
-	public interface MyJacksonView1 {};
+	public interface MyJacksonView1 {}
 
-	public interface MyJacksonView2 {};
+	public interface MyJacksonView2 {}
 
 
 	public static class JacksonViewBean {

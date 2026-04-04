@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ import static org.mockito.Mockito.verify;
  * @author Thomas Risberg
  * @author Juergen Hoeller
  */
-public class SqlUpdateTests {
+class SqlUpdateTests {
 
 	private static final String UPDATE =
 			"update seat_status set booking_id = null";
@@ -70,36 +70,32 @@ public class SqlUpdateTests {
 	private static final String INSERT_GENERATE_KEYS =
 			"insert into show (name) values(?)";
 
-	private DataSource dataSource;
 
-	private Connection connection;
+	private Connection connection = mock();
 
-	private PreparedStatement preparedStatement;
+	private DataSource dataSource = mock();
 
-	private ResultSet resultSet;
+	private PreparedStatement preparedStatement = mock();
 
-	private ResultSetMetaData resultSetMetaData;
+	private ResultSet resultSet = mock();
+
+	private ResultSetMetaData resultSetMetaData = mock();
 
 
 	@BeforeEach
-	public void setUp() throws Exception {
-		dataSource = mock(DataSource.class);
-		connection = mock(Connection.class);
-		preparedStatement = mock(PreparedStatement.class);
-		resultSet = mock(ResultSet.class);
-		resultSetMetaData = mock(ResultSetMetaData.class);
+	void setUp() throws Exception {
 		given(dataSource.getConnection()).willReturn(connection);
 	}
 
 	@AfterEach
-	public void verifyClosed() throws Exception {
+	void verifyClosed() throws Exception {
 		verify(preparedStatement).close();
 		verify(connection).close();
 	}
 
 
 	@Test
-	public void testUpdate() throws SQLException {
+	void update() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(1);
 		given(connection.prepareStatement(UPDATE)).willReturn(preparedStatement);
 
@@ -110,7 +106,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testUpdateInt() throws SQLException {
+	void updateInt() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(1);
 		given(connection.prepareStatement(UPDATE_INT)).willReturn(preparedStatement);
 
@@ -122,7 +118,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testUpdateIntInt() throws SQLException {
+	void updateIntInt() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(1);
 		given(connection.prepareStatement(UPDATE_INT_INT)).willReturn(preparedStatement);
 
@@ -135,12 +131,12 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testNamedParameterUpdateWithUnnamedDeclarations() throws SQLException {
+	void namedParameterUpdateWithUnnamedDeclarations() throws SQLException {
 		doTestNamedParameterUpdate(false);
 	}
 
 	@Test
-	public void testNamedParameterUpdateWithNamedDeclarations() throws SQLException {
+	void namedParameterUpdateWithNamedDeclarations() throws SQLException {
 		doTestNamedParameterUpdate(true);
 	}
 
@@ -180,7 +176,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testUpdateString() throws SQLException {
+	void updateString() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(1);
 		given(connection.prepareStatement(UPDATE_STRING)).willReturn(preparedStatement);
 
@@ -192,7 +188,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testUpdateMixed() throws SQLException {
+	void updateMixed() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(1);
 		given(connection.prepareStatement(UPDATE_OBJECTS)).willReturn(preparedStatement);
 
@@ -207,7 +203,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testUpdateAndGeneratedKeys() throws SQLException {
+	void updateAndGeneratedKeys() throws SQLException {
 		given(resultSetMetaData.getColumnCount()).willReturn(1);
 		given(resultSetMetaData.getColumnLabel(1)).willReturn("1");
 		given(resultSet.getMetaData()).willReturn(resultSetMetaData);
@@ -215,23 +211,22 @@ public class SqlUpdateTests {
 		given(resultSet.getObject(1)).willReturn(11);
 		given(preparedStatement.executeUpdate()).willReturn(1);
 		given(preparedStatement.getGeneratedKeys()).willReturn(resultSet);
-		given(connection.prepareStatement(INSERT_GENERATE_KEYS,
-				PreparedStatement.RETURN_GENERATED_KEYS)
-			).willReturn(preparedStatement);
+		given(connection.prepareStatement(INSERT_GENERATE_KEYS, PreparedStatement.RETURN_GENERATED_KEYS))
+				.willReturn(preparedStatement);
 
 		GeneratedKeysUpdater pc = new GeneratedKeysUpdater();
 		KeyHolder generatedKeyHolder = new GeneratedKeyHolder();
 		int rowsAffected = pc.run("rod", generatedKeyHolder);
 
 		assertThat(rowsAffected).isEqualTo(1);
-		assertThat(generatedKeyHolder.getKeyList().size()).isEqualTo(1);
-		assertThat(generatedKeyHolder.getKey().intValue()).isEqualTo(11);
+		assertThat(generatedKeyHolder.getKeyList()).hasSize(1);
+		assertThat(generatedKeyHolder.getKey()).isEqualTo(11);
 		verify(preparedStatement).setString(1, "rod");
 		verify(resultSet).close();
 	}
 
 	@Test
-	public void testUpdateConstructor() throws SQLException {
+	void updateConstructor() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(1);
 		given(connection.prepareStatement(UPDATE_OBJECTS)).willReturn(preparedStatement);
 		ConstructorUpdater pc = new ConstructorUpdater();
@@ -246,7 +241,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testUnderMaxRows() throws SQLException {
+	void underMaxRows() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(3);
 		given(connection.prepareStatement(UPDATE)).willReturn(preparedStatement);
 
@@ -257,7 +252,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testMaxRows() throws SQLException {
+	void maxRows() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(5);
 		given(connection.prepareStatement(UPDATE)).willReturn(preparedStatement);
 
@@ -268,7 +263,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testOverMaxRows() throws SQLException {
+	void overMaxRows() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(8);
 		given(connection.prepareStatement(UPDATE)).willReturn(preparedStatement);
 
@@ -279,7 +274,7 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testRequiredRows() throws SQLException {
+	void requiredRows() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(3);
 		given(connection.prepareStatement(UPDATE)).willReturn(preparedStatement);
 
@@ -290,13 +285,14 @@ public class SqlUpdateTests {
 	}
 
 	@Test
-	public void testNotRequiredRows() throws SQLException {
+	void notRequiredRows() throws SQLException {
 		given(preparedStatement.executeUpdate()).willReturn(2);
 		given(connection.prepareStatement(UPDATE)).willReturn(preparedStatement);
 		RequiredRowsUpdater pc = new RequiredRowsUpdater();
 		assertThatExceptionOfType(JdbcUpdateAffectedIncorrectNumberOfRowsException.class).isThrownBy(
 				pc::run);
 	}
+
 
 	private class Updater extends SqlUpdate {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@
 package org.springframework.core.testfixture;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +31,7 @@ import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.assertj.core.api.Assumptions.assumeThat;
 import static org.springframework.core.testfixture.TestGroup.LONG_RUNNING;
 
 /**
@@ -41,6 +44,10 @@ class TestGroupTests {
 
 	private static final String TEST_GROUPS_SYSTEM_PROPERTY = "testGroups";
 
+	static {
+		Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
+	}
+
 
 	private String originalTestGroups;
 
@@ -52,12 +59,7 @@ class TestGroupTests {
 
 	@AfterEach
 	void restoreOriginalTestGroups() {
-		if (this.originalTestGroups != null) {
-			setTestGroups(this.originalTestGroups);
-		}
-		else {
-			setTestGroups("");
-		}
+		setTestGroups(Objects.requireNonNullElse(this.originalTestGroups, ""));
 	}
 
 	@Test
@@ -118,8 +120,9 @@ class TestGroupTests {
 	 */
 	private static void assumeGroup(TestGroup group) {
 		Set<TestGroup> testGroups = TestGroup.loadTestGroups();
-		assumeTrue(testGroups.contains(group),
-			() -> "Requires inactive test group " + group + "; active test groups: " + testGroups);
+		assumeThat(testGroups)
+			.as(() -> "Requires inactive test group " + group + "; active test groups: " + testGroups)
+			.contains(group);
 	}
 
 }

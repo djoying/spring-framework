@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,12 @@ package org.springframework.aop.testfixture.advice;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Map;
+
+import org.jspecify.annotations.Nullable;
 
 /**
- * Abstract superclass for counting advices etc.
+ * Abstract superclass for counting advice, etc.
  *
  * @author Rod Johnson
  * @author Chris Beams
@@ -31,7 +34,7 @@ import java.util.HashMap;
 public class MethodCounter implements Serializable {
 
 	/** Method name --> count, does not understand overloading */
-	private HashMap<String, Integer> map = new HashMap<>();
+	private Map<String, Integer> map = new HashMap<>();
 
 	private int allCount;
 
@@ -58,8 +61,8 @@ public class MethodCounter implements Serializable {
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
-	public boolean equals(Object other) {
-		return (other != null && other.getClass() == this.getClass());
+	public boolean equals(@Nullable Object other) {
+		return (other != null && getClass() == other.getClass());
 	}
 
 	@Override

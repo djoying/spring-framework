@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,16 @@
 
 package org.springframework.web.reactive.function.server;
 
-import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,8 +40,6 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
  */
 class PublisherHandlerFunctionIntegrationTests extends AbstractRouterFunctionIntegrationTests {
 
-	private final RestTemplate restTemplate = new RestTemplate();
-
 
 	@Override
 	protected RouterFunction<?> routerFunction() {
@@ -53,13 +49,11 @@ class PublisherHandlerFunctionIntegrationTests extends AbstractRouterFunctionInt
 				.and(route(GET("/flux"), personHandler::flux));
 	}
 
-
 	@ParameterizedHttpServerTest
 	void mono(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ResponseEntity<Person> result =
-				restTemplate.getForEntity("http://localhost:" + super.port + "/mono", Person.class);
+		ResponseEntity<Person> result = getRestClient().get().uri("/mono").retrieve().toEntity(Person.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody().getName()).isEqualTo("John");
@@ -69,13 +63,12 @@ class PublisherHandlerFunctionIntegrationTests extends AbstractRouterFunctionInt
 	void flux(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		ParameterizedTypeReference<List<Person>> reference = new ParameterizedTypeReference<List<Person>>() {};
-		ResponseEntity<List<Person>> result =
-				restTemplate.exchange("http://localhost:" + super.port + "/flux", HttpMethod.GET, null, reference);
+		ResponseEntity<List<Person>> result = getRestClient().get().uri("/flux").retrieve()
+				.toEntity(new ParameterizedTypeReference<>() {});
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		List<Person> body = result.getBody();
-		assertThat(body.size()).isEqualTo(2);
+		assertThat(body).hasSize(2);
 		assertThat(body.get(0).getName()).isEqualTo("John");
 		assertThat(body.get(1).getName()).isEqualTo("Jane");
 	}
@@ -84,10 +77,8 @@ class PublisherHandlerFunctionIntegrationTests extends AbstractRouterFunctionInt
 	void postMono(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 
-		URI uri = URI.create("http://localhost:" + super.port + "/mono");
 		Person person = new Person("Jack");
-		RequestEntity<Person> requestEntity = RequestEntity.post(uri).body(person);
-		ResponseEntity<Person> result = restTemplate.exchange(requestEntity, Person.class);
+		ResponseEntity<Person> result = getRestClient().post().uri("/mono").body(person).retrieve().toEntity(Person.class);
 
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(result.getBody().getName()).isEqualTo("Jack");
@@ -137,7 +128,7 @@ class PublisherHandlerFunctionIntegrationTests extends AbstractRouterFunctionInt
 		}
 
 		@Override
-		public boolean equals(Object o) {
+		public boolean equals(@Nullable Object o) {
 			if (this == o) {
 				return true;
 			}
@@ -145,7 +136,7 @@ class PublisherHandlerFunctionIntegrationTests extends AbstractRouterFunctionInt
 				return false;
 			}
 			Person person = (Person) o;
-			return !(this.name != null ? !this.name.equals(person.name) : person.name != null);
+			return Objects.equals(this.name, person.name);
 		}
 
 		@Override

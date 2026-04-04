@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.MBeanExportConfiguration;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
-import org.springframework.jmx.export.MBeanExporterTests;
+import org.springframework.context.testfixture.jmx.export.Person;
 import org.springframework.jmx.export.TestDynamicMBean;
 import org.springframework.jmx.export.metadata.InvalidMetadataException;
 import org.springframework.jmx.support.MBeanServerFactoryBean;
@@ -49,13 +49,13 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Stephane Nicoll
  * @see AnnotationLazyInitMBeanTests
  */
-public class EnableMBeanExportConfigurationTests {
+class EnableMBeanExportConfigurationTests {
 
 	private AnnotationConfigApplicationContext ctx;
 
 
 	@AfterEach
-	public void closeContext() {
+	void closeContext() {
 		if (this.ctx != null) {
 			this.ctx.close();
 		}
@@ -63,7 +63,7 @@ public class EnableMBeanExportConfigurationTests {
 
 
 	@Test
-	public void testLazyNaming() throws Exception {
+	void lazyNaming() throws Exception {
 		load(LazyNamingConfiguration.class);
 		validateAnnotationTestBean();
 	}
@@ -73,14 +73,14 @@ public class EnableMBeanExportConfigurationTests {
 	}
 
 	@Test
-	public void testOnlyTargetClassIsExposed() throws Exception {
+	void onlyTargetClassIsExposed() throws Exception {
 		load(ProxyConfiguration.class);
 		validateAnnotationTestBean();
 	}
 
 	@Test
 	@SuppressWarnings("resource")
-	public void testPackagePrivateExtensionCantBeExposed() {
+	void packagePrivateExtensionCantBeExposed() {
 		assertThatExceptionOfType(InvalidMetadataException.class).isThrownBy(() ->
 				new AnnotationConfigApplicationContext(PackagePrivateConfiguration.class))
 			.withMessageContaining(PackagePrivateTestBean.class.getName())
@@ -89,7 +89,7 @@ public class EnableMBeanExportConfigurationTests {
 
 	@Test
 	@SuppressWarnings("resource")
-	public void testPackagePrivateImplementationCantBeExposed() {
+	void packagePrivateImplementationCantBeExposed() {
 		assertThatExceptionOfType(InvalidMetadataException.class).isThrownBy(() ->
 				new AnnotationConfigApplicationContext(PackagePrivateInterfaceImplementationConfiguration.class))
 			.withMessageContaining(PackagePrivateAnnotationTestBean.class.getName())
@@ -97,13 +97,13 @@ public class EnableMBeanExportConfigurationTests {
 	}
 
 	@Test
-	public void testPackagePrivateClassExtensionCanBeExposed() throws Exception {
+	void packagePrivateClassExtensionCanBeExposed() throws Exception {
 		load(PackagePrivateExtensionConfiguration.class);
 		validateAnnotationTestBean();
 	}
 
 	@Test
-	public void testPlaceholderBased() throws Exception {
+	void placeholderBased() throws Exception {
 		MockEnvironment env = new MockEnvironment();
 		env.setProperty("serverName", "server");
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
@@ -115,7 +115,7 @@ public class EnableMBeanExportConfigurationTests {
 	}
 
 	@Test
-	public void testLazyAssembling() throws Exception {
+	void lazyAssembling() throws Exception {
 		System.setProperty("domain", "bean");
 		load(LazyAssemblingConfiguration.class);
 		try {
@@ -132,7 +132,7 @@ public class EnableMBeanExportConfigurationTests {
 	}
 
 	@Test
-	public void testComponentScan() throws Exception {
+	void componentScan() throws Exception {
 		load(ComponentScanConfiguration.class);
 		MBeanServer server = (MBeanServer) this.ctx.getBean("server");
 		validateMBeanAttribute(server, "bean:name=testBean4", null);
@@ -242,8 +242,8 @@ public class EnableMBeanExportConfigurationTests {
 
 		@Bean(name="spring:mbean=another")
 		@Lazy
-		public MBeanExporterTests.Person person() {
-			MBeanExporterTests.Person person = new MBeanExporterTests.Person();
+		public Person person() {
+			Person person = new Person();
 			person.setName("Juergen Hoeller");
 			return person;
 		}
@@ -251,7 +251,7 @@ public class EnableMBeanExportConfigurationTests {
 		@Bean
 		@Lazy
 		public Object notLoadable() throws Exception {
-			return Class.forName("does.not.exist").newInstance();
+			return Class.forName("does.not.exist").getDeclaredConstructor().newInstance();
 		}
 	}
 

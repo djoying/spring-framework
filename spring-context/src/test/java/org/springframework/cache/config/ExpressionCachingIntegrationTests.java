@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.CachingConfigurerSupport;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -31,11 +31,11 @@ import org.springframework.context.annotation.Configuration;
 /**
  * @author Stephane Nicoll
  */
-public class ExpressionCachingIntegrationTests {
+class ExpressionCachingIntegrationTests {
 
 	@Test  // SPR-11692
 	@SuppressWarnings("unchecked")
-	public void expressionIsCacheBasedOnActualMethod() {
+	void expressionIsCacheBasedOnActualMethod() {
 		ConfigurableApplicationContext context =
 				new AnnotationConfigApplicationContext(SharedConfig.class, Spr11692Config.class);
 
@@ -122,7 +122,7 @@ public class ExpressionCachingIntegrationTests {
 
 	@Configuration
 	@EnableCaching
-	static class SharedConfig extends CachingConfigurerSupport {
+	static class SharedConfig implements CachingConfigurer {
 
 		@Override
 		@Bean

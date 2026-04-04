@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,10 +31,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Juergen Hoeller
  * @author Chris Beams
  */
-public class BeanWrapperEnumTests {
+class BeanWrapperEnumTests {
 
 	@Test
-	public void testCustomEnum() {
+	void customEnum() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnum", "VALUE_1");
@@ -42,113 +42,113 @@ public class BeanWrapperEnumTests {
 	}
 
 	@Test
-	public void testCustomEnumWithNull() {
+	void customEnumWithNull() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnum", null);
-		assertThat(gb.getCustomEnum()).isEqualTo(null);
+		assertThat(gb.getCustomEnum()).isNull();
 	}
 
 	@Test
-	public void testCustomEnumWithEmptyString() {
+	void customEnumWithEmptyString() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnum", "");
-		assertThat(gb.getCustomEnum()).isEqualTo(null);
+		assertThat(gb.getCustomEnum()).isNull();
 	}
 
 	@Test
-	public void testCustomEnumArrayWithSingleValue() {
+	void customEnumArrayWithSingleValue() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnumArray", "VALUE_1");
-		assertThat(gb.getCustomEnumArray().length).isEqualTo(1);
+		assertThat(gb.getCustomEnumArray()).hasSize(1);
 		assertThat(gb.getCustomEnumArray()[0]).isEqualTo(CustomEnum.VALUE_1);
 	}
 
 	@Test
-	public void testCustomEnumArrayWithMultipleValues() {
+	void customEnumArrayWithMultipleValues() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnumArray", new String[] {"VALUE_1", "VALUE_2"});
-		assertThat(gb.getCustomEnumArray().length).isEqualTo(2);
+		assertThat(gb.getCustomEnumArray()).hasSize(2);
 		assertThat(gb.getCustomEnumArray()[0]).isEqualTo(CustomEnum.VALUE_1);
 		assertThat(gb.getCustomEnumArray()[1]).isEqualTo(CustomEnum.VALUE_2);
 	}
 
 	@Test
-	public void testCustomEnumArrayWithMultipleValuesAsCsv() {
+	void customEnumArrayWithMultipleValuesAsCsv() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnumArray", "VALUE_1,VALUE_2");
-		assertThat(gb.getCustomEnumArray().length).isEqualTo(2);
+		assertThat(gb.getCustomEnumArray()).hasSize(2);
 		assertThat(gb.getCustomEnumArray()[0]).isEqualTo(CustomEnum.VALUE_1);
 		assertThat(gb.getCustomEnumArray()[1]).isEqualTo(CustomEnum.VALUE_2);
 	}
 
 	@Test
-	public void testCustomEnumSetWithSingleValue() {
+	void customEnumSetWithSingleValue() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnumSet", "VALUE_1");
-		assertThat(gb.getCustomEnumSet().size()).isEqualTo(1);
-		assertThat(gb.getCustomEnumSet().contains(CustomEnum.VALUE_1)).isTrue();
+		assertThat(gb.getCustomEnumSet()).hasSize(1);
+		assertThat(gb.getCustomEnumSet()).contains(CustomEnum.VALUE_1);
 	}
 
 	@Test
-	public void testCustomEnumSetWithMultipleValues() {
+	void customEnumSetWithMultipleValues() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnumSet", new String[] {"VALUE_1", "VALUE_2"});
-		assertThat(gb.getCustomEnumSet().size()).isEqualTo(2);
-		assertThat(gb.getCustomEnumSet().contains(CustomEnum.VALUE_1)).isTrue();
-		assertThat(gb.getCustomEnumSet().contains(CustomEnum.VALUE_2)).isTrue();
+		assertThat(gb.getCustomEnumSet()).hasSize(2);
+		assertThat(gb.getCustomEnumSet()).contains(CustomEnum.VALUE_1);
+		assertThat(gb.getCustomEnumSet()).contains(CustomEnum.VALUE_2);
 	}
 
 	@Test
-	public void testCustomEnumSetWithMultipleValuesAsCsv() {
+	void customEnumSetWithMultipleValuesAsCsv() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnumSet", "VALUE_1,VALUE_2");
-		assertThat(gb.getCustomEnumSet().size()).isEqualTo(2);
-		assertThat(gb.getCustomEnumSet().contains(CustomEnum.VALUE_1)).isTrue();
-		assertThat(gb.getCustomEnumSet().contains(CustomEnum.VALUE_2)).isTrue();
+		assertThat(gb.getCustomEnumSet()).hasSize(2);
+		assertThat(gb.getCustomEnumSet()).contains(CustomEnum.VALUE_1);
+		assertThat(gb.getCustomEnumSet()).contains(CustomEnum.VALUE_2);
 	}
 
 	@Test
-	public void testCustomEnumSetWithGetterSetterMismatch() {
+	void customEnumSetWithGetterSetterMismatch() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setPropertyValue("customEnumSetMismatch", new String[] {"VALUE_1", "VALUE_2"});
-		assertThat(gb.getCustomEnumSet().size()).isEqualTo(2);
-		assertThat(gb.getCustomEnumSet().contains(CustomEnum.VALUE_1)).isTrue();
-		assertThat(gb.getCustomEnumSet().contains(CustomEnum.VALUE_2)).isTrue();
+		assertThat(gb.getCustomEnumSet()).hasSize(2);
+		assertThat(gb.getCustomEnumSet()).contains(CustomEnum.VALUE_1);
+		assertThat(gb.getCustomEnumSet()).contains(CustomEnum.VALUE_2);
 	}
 
 	@Test
-	public void testStandardEnumSetWithMultipleValues() {
+	void standardEnumSetWithMultipleValues() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setConversionService(new DefaultConversionService());
 		assertThat(gb.getStandardEnumSet()).isNull();
 		bw.setPropertyValue("standardEnumSet", new String[] {"VALUE_1", "VALUE_2"});
-		assertThat(gb.getStandardEnumSet().size()).isEqualTo(2);
-		assertThat(gb.getStandardEnumSet().contains(CustomEnum.VALUE_1)).isTrue();
-		assertThat(gb.getStandardEnumSet().contains(CustomEnum.VALUE_2)).isTrue();
+		assertThat(gb.getStandardEnumSet()).hasSize(2);
+		assertThat(gb.getStandardEnumSet()).contains(CustomEnum.VALUE_1);
+		assertThat(gb.getStandardEnumSet()).contains(CustomEnum.VALUE_2);
 	}
 
 	@Test
-	public void testStandardEnumSetWithAutoGrowing() {
+	void standardEnumSetWithAutoGrowing() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setAutoGrowNestedPaths(true);
 		assertThat(gb.getStandardEnumSet()).isNull();
 		bw.getPropertyValue("standardEnumSet.class");
-		assertThat(gb.getStandardEnumSet().size()).isEqualTo(0);
+		assertThat(gb.getStandardEnumSet()).isEmpty();
 	}
 
 	@Test
-	public void testStandardEnumMapWithMultipleValues() {
+	void standardEnumMapWithMultipleValues() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setConversionService(new DefaultConversionService());
@@ -157,24 +157,24 @@ public class BeanWrapperEnumTests {
 		map.put("VALUE_1", 1);
 		map.put("VALUE_2", 2);
 		bw.setPropertyValue("standardEnumMap", map);
-		assertThat(gb.getStandardEnumMap().size()).isEqualTo(2);
+		assertThat(gb.getStandardEnumMap()).hasSize(2);
 		assertThat(gb.getStandardEnumMap().get(CustomEnum.VALUE_1)).isEqualTo(1);
 		assertThat(gb.getStandardEnumMap().get(CustomEnum.VALUE_2)).isEqualTo(2);
 	}
 
 	@Test
-	public void testStandardEnumMapWithAutoGrowing() {
+	void standardEnumMapWithAutoGrowing() {
 		GenericBean<?> gb = new GenericBean<>();
 		BeanWrapper bw = new BeanWrapperImpl(gb);
 		bw.setAutoGrowNestedPaths(true);
 		assertThat(gb.getStandardEnumMap()).isNull();
 		bw.setPropertyValue("standardEnumMap[VALUE_1]", 1);
-		assertThat(gb.getStandardEnumMap().size()).isEqualTo(1);
+		assertThat(gb.getStandardEnumMap()).hasSize(1);
 		assertThat(gb.getStandardEnumMap().get(CustomEnum.VALUE_1)).isEqualTo(1);
 	}
 
 	@Test
-	public void testNonPublicEnum() {
+	void nonPublicEnum() {
 		NonPublicEnumHolder holder = new NonPublicEnumHolder();
 		BeanWrapper bw = new BeanWrapperImpl(holder);
 		bw.setPropertyValue("nonPublicEnum", "VALUE_1");
@@ -184,7 +184,7 @@ public class BeanWrapperEnumTests {
 
 	enum NonPublicEnum {
 
-		VALUE_1, VALUE_2;
+		VALUE_1, VALUE_2
 	}
 
 

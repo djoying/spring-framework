@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,14 @@
 
 package org.springframework.cache.aspectj;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CachingConfigurerSupport;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.cache.interceptor.CacheResolver;
@@ -48,8 +49,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Stephane Nicoll
  */
-public class AspectJEnableCachingIsolatedTests {
+class AspectJEnableCachingIsolatedTests {
 
+	@AutoClose
 	private ConfigurableApplicationContext ctx;
 
 
@@ -57,23 +59,16 @@ public class AspectJEnableCachingIsolatedTests {
 		this.ctx = new AnnotationConfigApplicationContext(config);
 	}
 
-	@AfterEach
-	public void closeContext() {
-		if (this.ctx != null) {
-			this.ctx.close();
-		}
-	}
-
 
 	@Test
-	public void testKeyStrategy() {
+	void keyStrategy() {
 		load(EnableCachingConfig.class);
 		AnnotationCacheAspect aspect = this.ctx.getBean(AnnotationCacheAspect.class);
 		assertThat(aspect.getKeyGenerator()).isSameAs(this.ctx.getBean("keyGenerator", KeyGenerator.class));
 	}
 
 	@Test
-	public void testCacheErrorHandler() {
+	void cacheErrorHandler() {
 		load(EnableCachingConfig.class);
 		AnnotationCacheAspect aspect = this.ctx.getBean(AnnotationCacheAspect.class);
 		assertThat(aspect.getErrorHandler()).isSameAs(this.ctx.getBean("errorHandler", CacheErrorHandler.class));
@@ -83,51 +78,52 @@ public class AspectJEnableCachingIsolatedTests {
 	// --- local tests -------
 
 	@Test
-	public void singleCacheManagerBean() {
+	void singleCacheManagerBean() {
 		load(SingleCacheManagerConfig.class);
 	}
 
 	@Test
-	public void multipleCacheManagerBeans() {
+	void multipleCacheManagerBeans() {
 		try {
 			load(MultiCacheManagerConfig.class);
 		}
-		catch (IllegalStateException ex) {
-			assertThat(ex.getMessage().contains("bean of type CacheManager")).isTrue();
+		catch (NoUniqueBeanDefinitionException ex) {
+			assertThat(ex.getMessage()).contains(
+					"no CacheResolver specified and expected single matching CacheManager but found 2")
+					.contains("cm1", "cm2");
+			assertThat(ex.getNumberOfBeansFound()).isEqualTo(2);
+			assertThat(ex.getBeanNamesFound()).containsExactlyInAnyOrder("cm1", "cm2");
 		}
 	}
 
 	@Test
-	public void multipleCacheManagerBeans_implementsCachingConfigurer() {
+	void multipleCacheManagerBeans_implementsCachingConfigurer() {
 		load(MultiCacheManagerConfigurer.class); // does not throw
 	}
 
 	@Test
-	public void multipleCachingConfigurers() {
+	void multipleCachingConfigurers() {
 		try {
 			load(MultiCacheManagerConfigurer.class, EnableCachingConfig.class);
 		}
-		catch (BeanCreationException ex) {
-			Throwable root = ex.getRootCause();
-			boolean condition = root instanceof IllegalStateException;
-			assertThat(condition).isTrue();
-			assertThat(ex.getMessage().contains("implementations of CachingConfigurer")).isTrue();
+		catch (IllegalStateException ex) {
+			assertThat(ex.getMessage()).contains("implementations of CachingConfigurer");
 		}
 	}
 
 	@Test
-	public void noCacheManagerBeans() {
+	void noCacheManagerBeans() {
 		try {
 			load(EmptyConfig.class);
 		}
-		catch (IllegalStateException ex) {
-			assertThat(ex.getMessage().contains("no bean of type CacheManager")).isTrue();
+		catch (NoSuchBeanDefinitionException ex) {
+			assertThat(ex.getMessage()).contains("no CacheResolver specified");
 		}
 	}
 
 	@Test
 	@Disabled("AspectJ has some sort of caching that makes this one fail")
-	public void emptyConfigSupport() {
+	void emptyConfigSupport() {
 		load(EmptyConfigSupportConfig.class);
 		AnnotationCacheAspect aspect = this.ctx.getBean(AnnotationCacheAspect.class);
 		assertThat(aspect.getCacheResolver()).isNotNull();
@@ -136,7 +132,7 @@ public class AspectJEnableCachingIsolatedTests {
 	}
 
 	@Test
-	public void bothSetOnlyResolverIsUsed() {
+	void bothSetOnlyResolverIsUsed() {
 		load(FullCachingConfig.class);
 
 		AnnotationCacheAspect aspect = this.ctx.getBean(AnnotationCacheAspect.class);
@@ -147,7 +143,7 @@ public class AspectJEnableCachingIsolatedTests {
 
 	@Configuration
 	@EnableCaching(mode = AdviceMode.ASPECTJ)
-	static class EnableCachingConfig extends CachingConfigurerSupport {
+	static class EnableCachingConfig implements CachingConfigurer {
 
 		@Override
 		@Bean
@@ -224,7 +220,7 @@ public class AspectJEnableCachingIsolatedTests {
 
 	@Configuration
 	@EnableCaching(mode = AdviceMode.ASPECTJ)
-	static class MultiCacheManagerConfigurer extends CachingConfigurerSupport {
+	static class MultiCacheManagerConfigurer implements CachingConfigurer {
 
 		@Bean
 		public CacheManager cm1() {
@@ -250,7 +246,7 @@ public class AspectJEnableCachingIsolatedTests {
 
 	@Configuration
 	@EnableCaching(mode = AdviceMode.ASPECTJ)
-	static class EmptyConfigSupportConfig extends CachingConfigurerSupport {
+	static class EmptyConfigSupportConfig implements CachingConfigurer {
 
 		@Bean
 		public CacheManager cm() {
@@ -262,7 +258,7 @@ public class AspectJEnableCachingIsolatedTests {
 
 	@Configuration
 	@EnableCaching(mode = AdviceMode.ASPECTJ)
-	static class FullCachingConfig extends CachingConfigurerSupport {
+	static class FullCachingConfig implements CachingConfigurer {
 
 		@Override
 		@Bean
@@ -282,4 +278,5 @@ public class AspectJEnableCachingIsolatedTests {
 			return new NamedCacheResolver(cacheManager(), "foo");
 		}
 	}
+
 }

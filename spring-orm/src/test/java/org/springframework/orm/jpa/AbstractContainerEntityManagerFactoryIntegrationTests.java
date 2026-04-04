@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,23 @@ package org.springframework.orm.jpa;
 import java.lang.reflect.Proxy;
 import java.util.List;
 
-import javax.persistence.EntityManager;
-import javax.persistence.FlushModeType;
-import javax.persistence.NoResultException;
-import javax.persistence.Query;
-
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.FlushModeType;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.Query;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.testfixture.io.SerializationTestUtils;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.orm.jpa.domain.DriversLicense;
 import org.springframework.orm.jpa.domain.Person;
+import org.springframework.transaction.TransactionDefinition;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatException;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatRuntimeException;
 
 /**
  * Integration tests for LocalContainerEntityManagerFactoryBean.
@@ -45,9 +48,8 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 		extends AbstractEntityManagerFactoryIntegrationTests {
 
 	@Test
-	public void testEntityManagerFactoryImplementsEntityManagerFactoryInfo() {
-		boolean condition = entityManagerFactory instanceof EntityManagerFactoryInfo;
-		assertThat(condition).as("Must have introduced config interface").isTrue();
+	protected void entityManagerFactoryImplementsEntityManagerFactoryInfo() {
+		assertThat(entityManagerFactory).isInstanceOf(EntityManagerFactoryInfo.class);
 		EntityManagerFactoryInfo emfi = (EntityManagerFactoryInfo) entityManagerFactory;
 		assertThat(emfi.getPersistenceUnitName()).isEqualTo("Person");
 		assertThat(emfi.getPersistenceUnitInfo()).as("PersistenceUnitInfo must be available").isNotNull();
@@ -55,33 +57,33 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 	}
 
 	@Test
-	public void testStateClean() {
+	void stateClean() {
 		assertThat(countRowsInTable("person")).as("Should be no people from previous transactions").isEqualTo(0);
 	}
 
 	@Test
-	public void testJdbcTx1_1() {
-		testJdbcTx2();
+	void jdbcTx1_1() {
+		jdbcTx2();
 	}
 
 	@Test
-	public void testJdbcTx1_2() {
-		testJdbcTx2();
+	void jdbcTx1_2() {
+		jdbcTx2();
 	}
 
 	@Test
-	public void testJdbcTx1_3() {
-		testJdbcTx2();
+	void jdbcTx1_3() {
+		jdbcTx2();
 	}
 
 	@Test
-	public void testJdbcTx2() {
+	void jdbcTx2() {
 		assertThat(countRowsInTable("person")).as("Any previous tx must have been rolled back").isEqualTo(0);
 		executeSqlScript("/org/springframework/orm/jpa/insertPerson.sql");
 	}
 
 	@Test
-	public void testEntityManagerProxyIsProxy() {
+	void entityManagerProxyIsProxy() {
 		assertThat(Proxy.isProxyClass(sharedEntityManager.getClass())).isTrue();
 		Query q = sharedEntityManager.createQuery("select p from Person as p");
 		q.getResultList();
@@ -92,8 +94,8 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 	}
 
 	@Test
-	public void testBogusQuery() {
-		assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> {
+	void bogusQuery() {
+		assertThatRuntimeException().isThrownBy(() -> {
 			Query query = sharedEntityManager.createQuery("It's raining toads");
 			// required in OpenJPA case
 			query.executeUpdate();
@@ -101,10 +103,10 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 	}
 
 	@Test
-	public void testGetReferenceWhenNoRow() {
-		assertThatExceptionOfType(Exception.class).isThrownBy(() -> {
+	void getReferenceWhenNoRow() {
+		assertThatException().isThrownBy(() -> {
 				Person notThere = sharedEntityManager.getReference(Person.class, 666);
-				// We may get here (as with Hibernate). Either behaviour is valid:
+				// We may get here (as with Hibernate). Either behavior is valid:
 				// throw exception on first access or on getReference itself.
 				notThere.getFirstName();
 			})
@@ -112,24 +114,34 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 	}
 
 	@Test
-	public void testLazyLoading() {
+	void lazyLoading() throws Exception {
 		try {
 			Person tony = new Person();
 			tony.setFirstName("Tony");
 			tony.setLastName("Blair");
 			tony.setDriversLicense(new DriversLicense("8439DK"));
 			sharedEntityManager.persist(tony);
+			assertThat(DataSourceUtils.getConnection(jdbcTemplate.getDataSource()).getTransactionIsolation())
+					.isEqualTo(TransactionDefinition.ISOLATION_READ_COMMITTED);
 			setComplete();
 			endTransaction();
 
+			transactionDefinition.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
 			startNewTransaction();
+			assertThat(DataSourceUtils.getConnection(jdbcTemplate.getDataSource()).getTransactionIsolation())
+					.isEqualTo(TransactionDefinition.ISOLATION_SERIALIZABLE);
 			sharedEntityManager.clear();
 			Person newTony = entityManagerFactory.createEntityManager().getReference(Person.class, tony.getId());
 			assertThat(tony).isNotSameAs(newTony);
 			endTransaction();
 
-			assertThat(newTony.getDriversLicense()).isNotNull();
+			transactionDefinition.setIsolationLevel(TransactionDefinition.ISOLATION_DEFAULT);
+			startNewTransaction();
+			assertThat(DataSourceUtils.getConnection(jdbcTemplate.getDataSource()).getTransactionIsolation())
+					.isEqualTo(TransactionDefinition.ISOLATION_READ_COMMITTED);
+			endTransaction();
 
+			assertThat(newTony.getDriversLicense()).isNotNull();
 			newTony.getDriversLicense().getSerialNumber();
 		}
 		finally {
@@ -139,7 +151,7 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void testMultipleResults() {
+	protected void multipleResults() {
 		// Add with JDBC
 		String firstName = "Tony";
 		insertPerson(firstName);
@@ -148,7 +160,7 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 		Query q = sharedEntityManager.createQuery("select p from Person as p");
 		List<Person> people = q.getResultList();
 
-		assertThat(people.size()).isEqualTo(1);
+		assertThat(people).hasSize(1);
 		assertThat(people.get(0).getFirstName()).isEqualTo(firstName);
 	}
 
@@ -158,17 +170,17 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 	}
 
 	@Test
-	public void testEntityManagerProxyRejectsProgrammaticTxManagement() {
-		assertThatIllegalStateException().as("Should not be able to create transactions on container managed EntityManager").isThrownBy(
-				sharedEntityManager::getTransaction);
+	void entityManagerProxyRejectsProgrammaticTxManagement() {
+		assertThatIllegalStateException().as("Should not be able to create transactions on container managed EntityManager")
+				.isThrownBy(sharedEntityManager::getTransaction);
 	}
 
 	@Test
-	public void testInstantiateAndSaveWithSharedEmProxy() {
-		testInstantiateAndSave(sharedEntityManager);
+	void instantiateAndSaveWithSharedEmProxy() {
+		instantiateAndSave(sharedEntityManager);
 	}
 
-	protected void testInstantiateAndSave(EntityManager em) {
+	protected void instantiateAndSave(EntityManager em) {
 		assertThat(countRowsInTable("person")).as("Should be no people from previous transactions").isEqualTo(0);
 		Person p = new Person();
 		p.setFirstName("Tony");
@@ -181,63 +193,57 @@ public abstract class AbstractContainerEntityManagerFactoryIntegrationTests
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void testQueryNoPersons() {
+	protected void queryNoPersons() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		Query q = em.createQuery("select p from Person as p");
 		List<Person> people = q.getResultList();
-		assertThat(people.size()).isEqualTo(0);
-		assertThatExceptionOfType(NoResultException.class).isThrownBy(
-				q::getSingleResult);
+		assertThat(people).isEmpty();
+		assertThatExceptionOfType(NoResultException.class).isThrownBy(q::getSingleResult);
 	}
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void testQueryNoPersonsNotTransactional() {
+	protected void queryNoPersonsNotTransactional() {
 		endTransaction();
 
 		EntityManager em = entityManagerFactory.createEntityManager();
 		Query q = em.createQuery("select p from Person as p");
 		List<Person> people = q.getResultList();
-		assertThat(people.size()).isEqualTo(0);
-		assertThatExceptionOfType(NoResultException.class).isThrownBy(
-				q::getSingleResult);
+		assertThat(people).isEmpty();
+		assertThatExceptionOfType(NoResultException.class).isThrownBy(q::getSingleResult);
 	}
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void testQueryNoPersonsShared() {
+	protected void queryNoPersonsShared() {
 		Query q = this.sharedEntityManager.createQuery("select p from Person as p");
 		q.setFlushMode(FlushModeType.AUTO);
 		List<Person> people = q.getResultList();
-		assertThat(people.size()).isEqualTo(0);
-		assertThatExceptionOfType(NoResultException.class).isThrownBy(
-				q::getSingleResult);
+		assertThat(people).isEmpty();
+		assertThatExceptionOfType(NoResultException.class).isThrownBy(q::getSingleResult);
 	}
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void testQueryNoPersonsSharedNotTransactional() {
+	protected void queryNoPersonsSharedNotTransactional() {
 		endTransaction();
 
 		EntityManager em = this.sharedEntityManager;
 		Query q = em.createQuery("select p from Person as p");
 		q.setFlushMode(FlushModeType.AUTO);
 		List<Person> people = q.getResultList();
-		assertThat(people.size()).isEqualTo(0);
-		assertThatExceptionOfType(Exception.class).isThrownBy(() ->
-				q.getSingleResult())
-			.withMessageContaining("closed");
+		assertThat(people).isEmpty();
+		assertThatException().isThrownBy(q::getSingleResult).withMessageContaining("closed");
 		// We would typically expect an IllegalStateException, but Hibernate throws a
 		// PersistenceException. So we assert the contents of the exception message instead.
 
 		Query q2 = em.createQuery("select p from Person as p");
 		q2.setFlushMode(FlushModeType.AUTO);
-		assertThatExceptionOfType(NoResultException.class).isThrownBy(
-				q2::getSingleResult);
+		assertThatExceptionOfType(NoResultException.class).isThrownBy(q2::getSingleResult);
 	}
 
 	@Test
-	public void testCanSerializeProxies() throws Exception {
+	void canSerializeProxies() throws Exception {
 		assertThat(SerializationTestUtils.serializeAndDeserialize(entityManagerFactory)).isNotNull();
 		assertThat(SerializationTestUtils.serializeAndDeserialize(sharedEntityManager)).isNotNull();
 	}

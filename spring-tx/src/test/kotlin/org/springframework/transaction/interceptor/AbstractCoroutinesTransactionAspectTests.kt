@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,18 @@ package org.springframework.transaction.interceptor
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatExceptionOfType
 import org.assertj.core.api.Fail
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.BDDMockito
+import org.mockito.BDDMockito.given
 import org.mockito.Mockito
 import org.springframework.transaction.*
 import org.springframework.transaction.reactive.TransactionContext
 import reactor.core.publisher.Mono
 import reactor.core.publisher.SynchronousSink
-import reactor.util.context.Context
+import reactor.util.context.ContextView
 import java.lang.reflect.Method
 import kotlin.coroutines.Continuation
 
@@ -53,7 +54,7 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 	}
 
 	@Test
-	fun noTransaction() {
+	suspend fun noTransaction() {
 		val rtm = Mockito.mock(ReactiveTransactionManager::class.java)
 		val tb = DefaultTestBean()
 		val tas: TransactionAttributeSource = MapTransactionAttributeSource()
@@ -63,9 +64,7 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 		// and transaction attribute source
 		val itb = advised(tb, rtm, tas) as TestBean
 		checkReactiveTransaction(false)
-		runBlocking {
-			itb.getName()
-		}
+		itb.getName()
 		checkReactiveTransaction(false)
 
 		// expect no calls
@@ -76,20 +75,18 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 	 * Check that a transaction is created and committed.
 	 */
 	@Test
-	fun transactionShouldSucceed() {
+	suspend fun transactionShouldSucceed() {
 		val txatt: TransactionAttribute = DefaultTransactionAttribute()
 		val tas = MapTransactionAttributeSource()
 		tas.register(getNameMethod!!, txatt)
 		val status = Mockito.mock(ReactiveTransaction::class.java)
 		val rtm = Mockito.mock(ReactiveTransactionManager::class.java)
 		// expect a transaction
-		BDDMockito.given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
-		BDDMockito.given(rtm.commit(status)).willReturn(Mono.empty())
+		given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
+		given(rtm.commit(status)).willReturn(Mono.empty())
 		val tb = DefaultTestBean()
 		val itb = advised(tb, rtm, tas) as TestBean
-		runBlocking {
-			itb.getName()
-		}
+		itb.getName()
 		Mockito.verify(rtm).commit(status)
 	}
 
@@ -97,7 +94,7 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 	 * Check that two transactions are created and committed.
 	 */
 	@Test
-	fun twoTransactionsShouldSucceed() {
+	suspend fun twoTransactionsShouldSucceed() {
 		val txatt: TransactionAttribute = DefaultTransactionAttribute()
 		val tas1 = MapTransactionAttributeSource()
 		tas1.register(getNameMethod!!, txatt)
@@ -106,14 +103,12 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 		val status = Mockito.mock(ReactiveTransaction::class.java)
 		val rtm = Mockito.mock(ReactiveTransactionManager::class.java)
 		// expect a transaction
-		BDDMockito.given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
-		BDDMockito.given(rtm.commit(status)).willReturn(Mono.empty())
+		given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
+		given(rtm.commit(status)).willReturn(Mono.empty())
 		val tb = DefaultTestBean()
 		val itb = advised(tb, rtm, arrayOf(tas1, tas2)) as TestBean
-		runBlocking {
-			itb.getName()
-			itb.setName("myName")
-		}
+		itb.getName()
+		itb.setName("myName")
 		Mockito.verify(rtm, Mockito.times(2)).commit(status)
 	}
 
@@ -121,20 +116,18 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 	 * Check that a transaction is created and committed.
 	 */
 	@Test
-	fun transactionShouldSucceedWithNotNew() {
+	suspend fun transactionShouldSucceedWithNotNew() {
 		val txatt: TransactionAttribute = DefaultTransactionAttribute()
 		val tas = MapTransactionAttributeSource()
 		tas.register(getNameMethod!!, txatt)
 		val status = Mockito.mock(ReactiveTransaction::class.java)
 		val rtm = Mockito.mock(ReactiveTransactionManager::class.java)
 		// expect a transaction
-		BDDMockito.given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
-		BDDMockito.given(rtm.commit(status)).willReturn(Mono.empty())
+		given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
+		given(rtm.commit(status)).willReturn(Mono.empty())
 		val tb = DefaultTestBean()
 		val itb = advised(tb, rtm, tas) as TestBean
-		runBlocking {
-			itb.getName()
-		}
+		itb.getName()
 		Mockito.verify(rtm).commit(status)
 	}
 
@@ -188,7 +181,7 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 			ex: Exception, shouldRollback: Boolean, rollbackException: Boolean) {
 		val txatt: TransactionAttribute = object : DefaultTransactionAttribute() {
 			override fun rollbackOn(t: Throwable): Boolean {
-				Assertions.assertThat(t).isSameAs(ex)
+				assertThat(t).isSameAs(ex)
 				return shouldRollback
 			}
 		}
@@ -198,17 +191,17 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 		val status = Mockito.mock(ReactiveTransaction::class.java)
 		val rtm = Mockito.mock(ReactiveTransactionManager::class.java)
 		// Gets additional call(s) from TransactionControl
-		BDDMockito.given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
+		given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
 		val tex = TransactionSystemException("system exception")
 		if (rollbackException) {
 			if (shouldRollback) {
-				BDDMockito.given(rtm.rollback(status)).willReturn(Mono.error(tex))
+				given(rtm.rollback(status)).willReturn(Mono.error(tex))
 			} else {
-				BDDMockito.given(rtm.commit(status)).willReturn(Mono.error(tex))
+				given(rtm.commit(status)).willReturn(Mono.error(tex))
 			}
 		} else {
-			BDDMockito.given(rtm.commit(status)).willReturn(Mono.empty())
-			BDDMockito.given(rtm.rollback(status)).willReturn(Mono.empty())
+			given(rtm.commit(status)).willReturn(Mono.empty())
+			given(rtm.rollback(status)).willReturn(Mono.empty())
 		}
 		val tb = DefaultTestBean()
 		val itb = advised(tb, rtm, tas) as TestBean
@@ -218,9 +211,9 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 			}
 			catch (actual: Exception) {
 				if (rollbackException) {
-					Assertions.assertThat(actual).hasMessage(tex.message).isInstanceOf(tex::class.java)
+					assertThat(actual).hasMessage(tex.message).isInstanceOf(tex::class.java)
 				} else {
-					Assertions.assertThat(actual).hasMessage(ex.message).isInstanceOf(ex::class.java)
+					assertThat(actual).hasMessage(ex.message).isInstanceOf(ex::class.java)
 				}
 			}
 		}
@@ -246,7 +239,7 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 		val rtm = Mockito.mock(ReactiveTransactionManager::class.java)
 		// Expect a transaction
 		val ex = CannotCreateTransactionException("foobar")
-		BDDMockito.given(rtm.getReactiveTransaction(txatt)).willThrow(ex)
+		given(rtm.getReactiveTransaction(txatt)).willThrow(ex)
 		val tb: DefaultTestBean = object : DefaultTestBean() {
 			override suspend fun getName(): String? {
 				throw UnsupportedOperationException(
@@ -254,14 +247,8 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 			}
 		}
 		val itb = advised(tb, rtm, tas) as TestBean
-		runBlocking {
-			try {
-				itb.getName()
-			}
-			catch (actual: Exception) {
-				Assertions.assertThat(actual).isInstanceOf(CannotCreateTransactionException::class.java)
-			}
-		}
+		assertThatExceptionOfType(CannotCreateTransactionException::class.java)
+			.isThrownBy { runBlocking { itb.getName() } }
 	}
 
 	/**
@@ -270,7 +257,7 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 	 * infrastructure exception was thrown to the client
 	 */
 	@Test
-	fun cannotCommitTransaction() {
+	suspend fun cannotCommitTransaction() {
 		val txatt: TransactionAttribute = DefaultTransactionAttribute()
 		val m = setNameMethod
 		val tas = MapTransactionAttributeSource()
@@ -279,34 +266,33 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 		// No attributes for m2
 		val rtm = Mockito.mock(ReactiveTransactionManager::class.java)
 		val status = Mockito.mock(ReactiveTransaction::class.java)
-		BDDMockito.given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
+		given(rtm.getReactiveTransaction(txatt)).willReturn(Mono.just(status))
 		val ex = UnexpectedRollbackException("foobar")
-		BDDMockito.given(rtm.commit(status)).willReturn(Mono.error(ex))
-		BDDMockito.given(rtm.rollback(status)).willReturn(Mono.empty())
+		given(rtm.commit(status)).willReturn(Mono.error(ex))
+		given(rtm.rollback(status)).willReturn(Mono.empty())
 		val tb = DefaultTestBean()
 		val itb = advised(tb, rtm, tas) as TestBean
 		val name = "new name"
-		runBlocking {
-			try {
-				itb.setName(name)
-			}
-			catch (ex: Exception) {
-				Assertions.assertThat(ex).isInstanceOf(RuntimeException::class.java)
-				Assertions.assertThat(ex.cause).hasMessage(ex.message).isInstanceOf(ex::class.java)
-			}
-			// Should have invoked target and changed name
-			Assertions.assertThat(itb.getName()).isEqualTo(name)
+		try {
+			itb.setName(name)
 		}
+		catch (actual: Exception) {
+			assertThat(actual).isInstanceOf(ex.javaClass)
+			assertThat(actual).hasMessage(ex.message)
+		}
+		// Should have invoked target and changed name
+		assertThat(itb.getName()).isEqualTo(name)
 	}
 
-	@Suppress("DEPRECATION")
 	private fun checkReactiveTransaction(expected: Boolean) {
-		Mono.subscriberContext().handle { context: Context, sink: SynchronousSink<Any?> ->
-			if (context.hasKey(TransactionContext::class.java) != expected) {
-				Fail.fail<Any>("Should have thrown NoTransactionException")
-			}
-			sink.complete()
-		}.block()
+		Mono.deferContextual{context -> Mono.just(context)}
+				.handle { context: ContextView, sink: SynchronousSink<ContextView> ->
+					if (context.hasKey(TransactionContext::class.java) != expected) {
+						Fail.fail<Any>("Should have thrown NoTransactionException")
+					}
+					sink.complete()
+				}
+				.block()
 	}
 
 	protected open fun advised(target: Any, rtm: ReactiveTransactionManager, tas: Array<TransactionAttributeSource>): Any {
@@ -336,17 +322,17 @@ abstract class AbstractCoroutinesTransactionAspectTests {
 		private var name: String? = null
 
 		override suspend fun getName(): String? {
-			delay(10)
+			delay(1)
 			return name
 		}
 
 		override suspend fun setName(name: String?) {
-			delay(10)
+			delay(1)
 			this.name = name
 		}
 
 		override suspend fun exceptional(t: Throwable?) {
-			delay(10)
+			delay(1)
 			if (t != null) {
 				throw t
 			}

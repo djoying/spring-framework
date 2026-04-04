@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,19 @@ import java.io.IOException;
 import java.security.Principal;
 import java.util.concurrent.CompletableFuture;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.AsyncListener;
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
-import javax.validation.Valid;
-
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.AsyncListener;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
+import jakarta.validation.Valid;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.MediaType;
@@ -66,10 +65,10 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  * Tests with {@link Filter}'s.
  * @author Rob Winch
  */
-public class FilterTests {
+class FilterTests {
 
 	@Test
-	public void whenFiltersCompleteMvcProcessesRequest() throws Exception {
+	void whenFiltersCompleteMvcProcessesRequest() throws Exception {
 		standaloneSetup(new PersonController())
 			.addFilters(new ContinueFilter()).build()
 			.perform(post("/persons").param("name", "Andy"))
@@ -82,7 +81,7 @@ public class FilterTests {
 	}
 
 	@Test
-	public void filtersProcessRequest() throws Exception {
+	void filtersProcessRequest() throws Exception {
 		standaloneSetup(new PersonController())
 			.addFilters(new ContinueFilter(), new RedirectFilter()).build()
 			.perform(post("/persons").param("name", "Andy"))
@@ -90,7 +89,7 @@ public class FilterTests {
 	}
 
 	@Test
-	public void filterMappedBySuffix() throws Exception {
+	void filterMappedBySuffix() throws Exception {
 		standaloneSetup(new PersonController())
 			.addFilter(new RedirectFilter(), "*.html").build()
 			.perform(post("/persons.html").param("name", "Andy"))
@@ -98,7 +97,7 @@ public class FilterTests {
 	}
 
 	@Test
-	public void filterWithExactMapping() throws Exception {
+	void filterWithExactMapping() throws Exception {
 		standaloneSetup(new PersonController())
 			.addFilter(new RedirectFilter(), "/p", "/persons").build()
 			.perform(post("/persons").param("name", "Andy"))
@@ -106,7 +105,7 @@ public class FilterTests {
 	}
 
 	@Test
-	public void filterSkipped() throws Exception {
+	void filterSkipped() throws Exception {
 		standaloneSetup(new PersonController())
 			.addFilter(new RedirectFilter(), "/p", "/person").build()
 			.perform(post("/persons").param("name", "Andy"))
@@ -119,7 +118,7 @@ public class FilterTests {
 	}
 
 	@Test
-	public void filterWrapsRequestResponse() throws Exception {
+	void filterWrapsRequestResponse() throws Exception {
 		standaloneSetup(new PersonController())
 			.addFilters(new WrappingRequestResponseFilter()).build()
 			.perform(post("/user"))
@@ -127,7 +126,7 @@ public class FilterTests {
 	}
 
 	@Test // SPR-16067, SPR-16695
-	public void filterWrapsRequestResponseAndPerformsAsyncDispatch() throws Exception {
+	void filterWrapsRequestResponseAndPerformsAsyncDispatch() throws Exception {
 		MockMvc mockMvc = standaloneSetup(new PersonController())
 				.addFilters(new WrappingRequestResponseFilter(), new ShallowEtagHeaderFilter())
 				.build();
@@ -140,8 +139,8 @@ public class FilterTests {
 		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk())
 				.andExpect(header().longValue("Content-Length", 53))
-				.andExpect(header().string("ETag", "\"0e37becb4f0c90709cb2e1efcc61eaa00\""))
-				.andExpect(content().string("{\"name\":\"Lukas\",\"someDouble\":0.0,\"someBoolean\":false}"));
+				.andExpect(header().string("ETag", "\"08ff7f2f1f370ada7db137770dada33a0\""))
+				.andExpect(content().string("{\"name\":\"Lukas\",\"someBoolean\":false,\"someDouble\":0.0}"));
 	}
 
 
@@ -175,7 +174,7 @@ public class FilterTests {
 		}
 	}
 
-	private class ContinueFilter extends OncePerRequestFilter {
+	private static class ContinueFilter extends OncePerRequestFilter {
 
 		@Override
 		protected void doFilterInternal(HttpServletRequest request,
@@ -213,11 +212,11 @@ public class FilterTests {
 		}
 	}
 
-	private class RedirectFilter extends OncePerRequestFilter {
+	private static class RedirectFilter extends OncePerRequestFilter {
 
 		@Override
 		protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-				FilterChain filterChain) throws ServletException, IOException {
+				FilterChain filterChain) throws IOException {
 
 			response.sendRedirect("/login");
 		}

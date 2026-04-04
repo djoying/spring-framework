@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ class CommonsPool2TargetSourceTests {
 	private DefaultListableBeanFactory beanFactory;
 
 	@BeforeEach
-	void setUp() throws Exception {
+	void setUp() {
 		this.beanFactory = new DefaultListableBeanFactory();
 		new XmlBeanDefinitionReader(this.beanFactory).loadBeanDefinitions(
 				new ClassPathResource(getClass().getSimpleName() + "-context.xml", getClass()));
@@ -71,7 +71,7 @@ class CommonsPool2TargetSourceTests {
 		this.beanFactory.destroySingletons();
 	}
 
-	private void testFunctionality(String name) {
+	private void assertFunctionality(String name) {
 		SideEffectBean pooled = (SideEffectBean) beanFactory.getBean(name);
 		assertThat(pooled.getCount()).isEqualTo(INITIAL_COUNT);
 		pooled.doWork();
@@ -85,17 +85,17 @@ class CommonsPool2TargetSourceTests {
 	}
 
 	@Test
-	void testFunctionality() {
-		testFunctionality("pooled");
+	void functionality() {
+		assertFunctionality("pooled");
 	}
 
 	@Test
-	void testFunctionalityWithNoInterceptors() {
-		testFunctionality("pooledNoInterceptors");
+	void functionalityWithNoInterceptors() {
+		assertFunctionality("pooledNoInterceptors");
 	}
 
 	@Test
-	void testConfigMixin() {
+	void configMixin() {
 		SideEffectBean pooled = (SideEffectBean) beanFactory.getBean("pooledWithMixin");
 		assertThat(pooled.getCount()).isEqualTo(INITIAL_COUNT);
 		PoolingConfig conf = (PoolingConfig) beanFactory.getBean("pooledWithMixin");
@@ -110,7 +110,7 @@ class CommonsPool2TargetSourceTests {
 	}
 
 	@Test
-	void testTargetSourceSerializableWithoutConfigMixin() throws Exception {
+	void targetSourceSerializableWithoutConfigMixin() throws Exception {
 		CommonsPool2TargetSource cpts = (CommonsPool2TargetSource) beanFactory.getBean("personPoolTargetSource");
 
 		SingletonTargetSource serialized = SerializationTestUtils.serializeAndDeserialize(cpts, SingletonTargetSource.class);
@@ -118,22 +118,20 @@ class CommonsPool2TargetSourceTests {
 	}
 
 	@Test
-	void testProxySerializableWithoutConfigMixin() throws Exception {
+	void proxySerializableWithoutConfigMixin() throws Exception {
 		Person pooled = (Person) beanFactory.getBean("pooledPerson");
 
-		boolean condition1 = ((Advised) pooled).getTargetSource() instanceof CommonsPool2TargetSource;
-		assertThat(condition1).isTrue();
+		assertThat(((Advised) pooled).getTargetSource()).isInstanceOf(CommonsPool2TargetSource.class);
 
 		//((Advised) pooled).setTargetSource(new SingletonTargetSource(new SerializablePerson()));
 		Person serialized = SerializationTestUtils.serializeAndDeserialize(pooled);
-		boolean condition = ((Advised) serialized).getTargetSource() instanceof SingletonTargetSource;
-		assertThat(condition).isTrue();
+		assertThat(((Advised) serialized).getTargetSource()).isInstanceOf(SingletonTargetSource.class);
 		serialized.setAge(25);
 		assertThat(serialized.getAge()).isEqualTo(25);
 	}
 
 	@Test
-	void testHitMaxSize() throws Exception {
+	void hitMaxSize() throws Exception {
 		int maxSize = 10;
 
 		CommonsPool2TargetSource targetSource = new CommonsPool2TargetSource();
@@ -153,18 +151,18 @@ class CommonsPool2TargetSourceTests {
 		assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(
 				targetSource::getTarget);
 
-		// lets now release an object and try to acquire a new one
+		// let's now release an object and try to acquire a new one
 		targetSource.releaseTarget(pooledInstances[9]);
 		pooledInstances[9] = targetSource.getTarget();
 
 		// release all objects
-		for (int i = 0; i < pooledInstances.length; i++) {
-			targetSource.releaseTarget(pooledInstances[i]);
+		for (Object element : pooledInstances) {
+			targetSource.releaseTarget(element);
 		}
 	}
 
 	@Test
-	void testHitMaxSizeLoadedFromContext() throws Exception {
+	void hitMaxSizeLoadedFromContext() throws Exception {
 		Advised person = (Advised) beanFactory.getBean("maxSizePooledPerson");
 		CommonsPool2TargetSource targetSource = (CommonsPool2TargetSource) person.getTargetSource();
 
@@ -181,22 +179,21 @@ class CommonsPool2TargetSourceTests {
 		assertThatExceptionOfType(NoSuchElementException.class).isThrownBy(
 				targetSource::getTarget);
 
-		// lets now release an object and try to acquire a new one
+		// let's now release an object and try to acquire a new one
 		targetSource.releaseTarget(pooledInstances[9]);
 		pooledInstances[9] = targetSource.getTarget();
 
 		// release all objects
-		for (int i = 0; i < pooledInstances.length; i++) {
-			System.out.println(i);
-			targetSource.releaseTarget(pooledInstances[i]);
+		for (Object pooledInstance : pooledInstances) {
+			targetSource.releaseTarget(pooledInstance);
 		}
 	}
 
 	@Test
-	void testSetWhenExhaustedAction() {
+	void setWhenExhaustedAction() {
 		CommonsPool2TargetSource targetSource = new CommonsPool2TargetSource();
 		targetSource.setBlockWhenExhausted(true);
-		assertThat(targetSource.isBlockWhenExhausted()).isEqualTo(true);
+		assertThat(targetSource.isBlockWhenExhausted()).isTrue();
 	}
 
 	@Test
@@ -207,10 +204,8 @@ class CommonsPool2TargetSourceTests {
 
 		Object first = targetSource.getTarget();
 		Object second = targetSource.getTarget();
-		boolean condition1 = first instanceof SerializablePerson;
-		assertThat(condition1).isTrue();
-		boolean condition = second instanceof SerializablePerson;
-		assertThat(condition).isTrue();
+		assertThat(first).isInstanceOf(SerializablePerson.class);
+		assertThat(second).isInstanceOf(SerializablePerson.class);
 		assertThat(second).isEqualTo(first);
 
 		targetSource.releaseTarget(first);

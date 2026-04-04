@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.util;
 
 import java.util.ArrayList;
 
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.testfixture.io.SerializationTestUtils;
@@ -32,23 +33,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AutoPopulatingListTests {
 
 	@Test
-	void withClass() throws Exception {
+	void withClass() {
 		doTestWithClass(new AutoPopulatingList<>(TestObject.class));
 	}
 
 	@Test
-	void withClassAndUserSuppliedBackingList() throws Exception {
-		doTestWithClass(new AutoPopulatingList<Object>(new ArrayList<>(), TestObject.class));
+	void withClassAndUserSuppliedBackingList() {
+		doTestWithClass(new AutoPopulatingList<>(new ArrayList<>(), TestObject.class));
 	}
 
 	@Test
-	void withElementFactory() throws Exception {
+	void withElementFactory() {
 		doTestWithElementFactory(new AutoPopulatingList<>(new MockElementFactory()));
 	}
 
 	@Test
-	void withElementFactoryAndUserSuppliedBackingList() throws Exception {
-		doTestWithElementFactory(new AutoPopulatingList<Object>(new ArrayList<>(), new MockElementFactory()));
+	void withElementFactoryAndUserSuppliedBackingList() {
+		doTestWithElementFactory(new AutoPopulatingList<>(new ArrayList<>(), new MockElementFactory()));
 	}
 
 	private void doTestWithClass(AutoPopulatingList<Object> list) {
@@ -56,8 +57,7 @@ class AutoPopulatingListTests {
 		for (int x = 0; x < 10; x++) {
 			Object element = list.get(x);
 			assertThat(list.get(x)).as("Element is null").isNotNull();
-			boolean condition = element instanceof TestObject;
-			assertThat(condition).as("Element is incorrect type").isTrue();
+			assertThat(element).as("Element is incorrect type").isInstanceOf(TestObject.class);
 			assertThat(element).isNotSameAs(lastElement);
 			lastElement = element;
 		}
@@ -65,16 +65,12 @@ class AutoPopulatingListTests {
 		String helloWorld = "Hello World!";
 		list.add(10, null);
 		list.add(11, helloWorld);
-		assertThat(list.get(11)).isEqualTo(helloWorld);
+		assertThat(list).element(11, InstanceOfAssertFactories.STRING).isEqualTo(helloWorld);
 
-		boolean condition3 = list.get(10) instanceof TestObject;
-		assertThat(condition3).isTrue();
-		boolean condition2 = list.get(12) instanceof TestObject;
-		assertThat(condition2).isTrue();
-		boolean condition1 = list.get(13) instanceof TestObject;
-		assertThat(condition1).isTrue();
-		boolean condition = list.get(20) instanceof TestObject;
-		assertThat(condition).isTrue();
+		assertThat(list.get(10)).isInstanceOf(TestObject.class);
+		assertThat(list.get(12)).isInstanceOf(TestObject.class);
+		assertThat(list.get(13)).isInstanceOf(TestObject.class);
+		assertThat(list.get(20)).isInstanceOf(TestObject.class);
 	}
 
 	private void doTestWithElementFactory(AutoPopulatingList<Object> list) {

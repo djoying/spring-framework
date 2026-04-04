@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 package org.springframework.test.web.servlet.samples.client.standalone;
 
-import javax.validation.Valid;
-
+import jakarta.validation.Valid;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.stereotype.Controller;
@@ -44,14 +43,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * @author Rossen Stoyanchev
  */
-public class RedirectTests {
+class RedirectTests {
 
 	private final WebTestClient testClient =
 			MockMvcWebTestClient.bindToController(new PersonController()).build();
 
 
 	@Test
-	public void save() throws Exception {
+	void save() throws Exception {
 		EntityExchangeResult<Void> exchangeResult =
 				testClient.post().uri("/persons?name=Andy")
 						.exchange()
@@ -68,7 +67,7 @@ public class RedirectTests {
 	}
 
 	@Test
-	public void saveSpecial() throws Exception {
+	void saveSpecial() throws Exception {
 		EntityExchangeResult<Void> result =
 				testClient.post().uri("/people?name=Andy")
 						.exchange()
@@ -85,7 +84,7 @@ public class RedirectTests {
 	}
 
 	@Test
-	public void saveWithErrors() throws Exception {
+	void saveWithErrors() throws Exception {
 		EntityExchangeResult<Void> result =
 				testClient.post().uri("/persons").exchange().expectStatus().isOk().expectBody().isEmpty();
 
@@ -97,7 +96,7 @@ public class RedirectTests {
 	}
 
 	@Test
-	public void saveSpecialWithErrors() throws Exception {
+	void saveSpecialWithErrors() throws Exception {
 		EntityExchangeResult<Void> result =
 				testClient.post().uri("/people").exchange().expectStatus().isOk().expectBody().isEmpty();
 
@@ -109,7 +108,7 @@ public class RedirectTests {
 	}
 
 	@Test
-	public void getPerson() throws Exception {
+	void getPerson() throws Exception {
 		EntityExchangeResult<Void> result =
 				MockMvcWebTestClient.bindToController(new PersonController())
 						.defaultRequest(get("/").flashAttr("message", "success!"))

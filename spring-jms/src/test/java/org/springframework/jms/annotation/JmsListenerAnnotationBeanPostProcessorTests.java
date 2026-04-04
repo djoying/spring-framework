@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,15 +61,16 @@ class JmsListenerAnnotationBeanPostProcessorTests {
 				Config.class, SimpleMessageListenerTestBean.class);
 
 		JmsListenerContainerTestFactory factory = context.getBean(JmsListenerContainerTestFactory.class);
-		assertThat(factory.getListenerContainers().size()).as("One container should have been registered").isEqualTo(1);
+		assertThat(factory.getListenerContainers()).as("One container should have been registered").hasSize(1);
 		MessageListenerTestContainer container = factory.getListenerContainers().get(0);
 
 		JmsListenerEndpoint endpoint = container.getEndpoint();
 		assertThat(endpoint.getClass()).as("Wrong endpoint type").isEqualTo(MethodJmsListenerEndpoint.class);
 		MethodJmsListenerEndpoint methodEndpoint = (MethodJmsListenerEndpoint) endpoint;
 		assertThat(methodEndpoint.getBean().getClass()).isEqualTo(SimpleMessageListenerTestBean.class);
-		assertThat(methodEndpoint.getMethod()).isEqualTo(SimpleMessageListenerTestBean.class.getMethod("handleIt", String.class));
-		assertThat(methodEndpoint.getMostSpecificMethod()).isEqualTo(SimpleMessageListenerTestBean.class.getMethod("handleIt", String.class));
+		Method method = SimpleMessageListenerTestBean.class.getMethod("handleIt", String.class);
+		assertThat(methodEndpoint.getMethod()).isEqualTo(method);
+		assertThat(methodEndpoint.getMostSpecificMethod()).isEqualTo(method);
 
 		SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer();
 		methodEndpoint.setupListenerContainer(listenerContainer);
@@ -84,7 +85,7 @@ class JmsListenerAnnotationBeanPostProcessorTests {
 	void metaAnnotationIsDiscovered() throws Exception {
 		try (ConfigurableApplicationContext context = new AnnotationConfigApplicationContext(Config.class, MetaAnnotationTestBean.class)) {
 			JmsListenerContainerTestFactory factory = context.getBean(JmsListenerContainerTestFactory.class);
-			assertThat(factory.getListenerContainers().size()).as("one container should have been registered").isEqualTo(1);
+			assertThat(factory.getListenerContainers()).as("one container should have been registered").hasSize(1);
 
 			JmsListenerEndpoint endpoint = factory.getListenerContainers().get(0).getEndpoint();
 			assertThat(endpoint.getClass()).as("Wrong endpoint type").isEqualTo(MethodJmsListenerEndpoint.class);
@@ -100,14 +101,13 @@ class JmsListenerAnnotationBeanPostProcessorTests {
 	void sendToAnnotationFoundOnInterfaceProxy() throws Exception {
 		try (ConfigurableApplicationContext context = new AnnotationConfigApplicationContext(Config.class, ProxyConfig.class, InterfaceProxyTestBean.class)) {
 			JmsListenerContainerTestFactory factory = context.getBean(JmsListenerContainerTestFactory.class);
-			assertThat(factory.getListenerContainers().size()).as("one container should have been registered").isEqualTo(1);
+			assertThat(factory.getListenerContainers()).as("one container should have been registered").hasSize(1);
 
 			JmsListenerEndpoint endpoint = factory.getListenerContainers().get(0).getEndpoint();
 			assertThat(endpoint.getClass()).as("Wrong endpoint type").isEqualTo(MethodJmsListenerEndpoint.class);
 			MethodJmsListenerEndpoint methodEndpoint = (MethodJmsListenerEndpoint) endpoint;
 			assertThat(AopUtils.isJdkDynamicProxy(methodEndpoint.getBean())).isTrue();
-			boolean condition = methodEndpoint.getBean() instanceof SimpleService;
-			assertThat(condition).isTrue();
+			assertThat(methodEndpoint.getBean()).isInstanceOf(SimpleService.class);
 			assertThat(methodEndpoint.getMethod()).isEqualTo(SimpleService.class.getMethod("handleIt", String.class, String.class));
 			assertThat(methodEndpoint.getMostSpecificMethod()).isEqualTo(InterfaceProxyTestBean.class.getMethod("handleIt", String.class, String.class));
 
@@ -122,14 +122,13 @@ class JmsListenerAnnotationBeanPostProcessorTests {
 	void sendToAnnotationFoundOnCglibProxy() throws Exception {
 		try (ConfigurableApplicationContext context = new AnnotationConfigApplicationContext(Config.class, ProxyConfig.class, ClassProxyTestBean.class)) {
 			JmsListenerContainerTestFactory factory = context.getBean(JmsListenerContainerTestFactory.class);
-			assertThat(factory.getListenerContainers().size()).as("one container should have been registered").isEqualTo(1);
+			assertThat(factory.getListenerContainers()).as("one container should have been registered").hasSize(1);
 
 			JmsListenerEndpoint endpoint = factory.getListenerContainers().get(0).getEndpoint();
 			assertThat(endpoint.getClass()).as("Wrong endpoint type").isEqualTo(MethodJmsListenerEndpoint.class);
 			MethodJmsListenerEndpoint methodEndpoint = (MethodJmsListenerEndpoint) endpoint;
 			assertThat(AopUtils.isCglibProxy(methodEndpoint.getBean())).isTrue();
-			boolean condition = methodEndpoint.getBean() instanceof ClassProxyTestBean;
-			assertThat(condition).isTrue();
+			assertThat(methodEndpoint.getBean()).isInstanceOf(ClassProxyTestBean.class);
 			assertThat(methodEndpoint.getMethod()).isEqualTo(ClassProxyTestBean.class.getMethod("handleIt", String.class, String.class));
 			assertThat(methodEndpoint.getMostSpecificMethod()).isEqualTo(ClassProxyTestBean.class.getMethod("handleIt", String.class, String.class));
 
@@ -141,7 +140,6 @@ class JmsListenerAnnotationBeanPostProcessorTests {
 	}
 
 	@Test
-	@SuppressWarnings("resource")
 	void invalidProxy() {
 		assertThatExceptionOfType(BeanCreationException.class).isThrownBy(() ->
 				new AnnotationConfigApplicationContext(Config.class, ProxyConfig.class, InvalidProxyTestBean.class))
@@ -204,7 +202,7 @@ class JmsListenerAnnotationBeanPostProcessorTests {
 
 		@Bean
 		public PlatformTransactionManager transactionManager() {
-			return mock(PlatformTransactionManager.class);
+			return mock();
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import org.springframework.core.Ordered;
  * }</pre>
  *
  * {@code MyAsyncBean} is a user-defined type with one or more methods annotated with
- * either Spring's {@code @Async} annotation, the EJB 3.1 {@code @javax.ejb.Asynchronous}
+ * either Spring's {@code @Async} annotation, the EJB 3.1 {@code @jakarta.ejb.Asynchronous}
  * annotation, or any custom annotation specified via the {@link #annotation} attribute.
  * The aspect is added transparently for any registered bean, for instance via this
  * configuration:
@@ -104,8 +104,7 @@ import org.springframework.core.Ordered;
  * }</pre>
  *
  * <p>If only one item needs to be customized, {@code null} can be returned to
- * keep the default settings. Consider also extending from {@link AsyncConfigurerSupport}
- * when possible.
+ * keep the default settings.
  *
  * <p>Note: In the above example the {@code ThreadPoolTaskExecutor} is not a fully managed
  * Spring bean. Add the {@code @Bean} annotation to the {@code getAsyncExecutor()} method
@@ -134,7 +133,7 @@ import org.springframework.core.Ordered;
  * setting of the <em>thread name prefix</em> of the {@code Executor}; this is because
  * the {@code <task:executor>} element does not expose such an attribute. This
  * demonstrates how the JavaConfig-based approach allows for maximum configurability
- * through direct access to actual componentry.
+ * through direct access to the actual component.
  *
  * <p>The {@link #mode} attribute controls how advice is applied: If the mode is
  * {@link AdviceMode#PROXY} (the default), then the other attributes control the behavior
@@ -146,6 +145,12 @@ import org.springframework.core.Ordered;
  * this case the {@code spring-aspects} module JAR must be present on the classpath, with
  * compile-time weaving or load-time weaving applying the aspect to the affected classes.
  * There is no proxy involved in such a scenario; local calls will be intercepted as well.
+ *
+ * <p><b>Note: {@code @EnableAsync} applies to its local application context only,
+ * allowing for selective activation at different levels.</b> Please redeclare
+ * {@code @EnableAsync} in each individual context, for example, the common root web
+ * application context and any separate {@code DispatcherServlet} application contexts,
+ * if you need to apply its behavior at multiple levels.
  *
  * @author Chris Beams
  * @author Juergen Hoeller
@@ -166,7 +171,7 @@ public @interface EnableAsync {
 	 * Indicate the 'async' annotation type to be detected at either class
 	 * or method level.
 	 * <p>By default, both Spring's @{@link Async} annotation and the EJB 3.1
-	 * {@code @javax.ejb.Asynchronous} annotation will be detected.
+	 * {@code @jakarta.ejb.Asynchronous} annotation will be detected.
 	 * <p>This attribute exists so that developers can provide their own
 	 * custom annotation type to indicate that a method (or all methods of
 	 * a given class) should be invoked asynchronously.
@@ -178,12 +183,13 @@ public @interface EnableAsync {
 	 * to standard Java interface-based proxies.
 	 * <p><strong>Applicable only if the {@link #mode} is set to {@link AdviceMode#PROXY}</strong>.
 	 * <p>The default is {@code false}.
-	 * <p>Note that setting this attribute to {@code true} will affect <em>all</em>
-	 * Spring-managed beans requiring proxying, not just those marked with {@code @Async}.
-	 * For example, other beans marked with Spring's {@code @Transactional} annotation
-	 * will be upgraded to subclass proxying at the same time. This approach has no
-	 * negative impact in practice unless one is explicitly expecting one type of proxy
-	 * vs. another &mdash; for example, in tests.
+	 * <p>Note that setting this attribute to {@code true} will only affect
+	 * {@link AsyncAnnotationBeanPostProcessor}.
+	 * <p>It is usually recommendable to rely on a global default proxy configuration
+	 * instead, with specific proxy requirements for certain beans expressed through
+	 * a {@link org.springframework.context.annotation.Proxyable} annotation on
+	 * the affected bean classes.
+	 * @see org.springframework.aop.config.AopConfigUtils#forceAutoProxyCreatorToUseClassProxying
 	 */
 	boolean proxyTargetClass() default false;
 

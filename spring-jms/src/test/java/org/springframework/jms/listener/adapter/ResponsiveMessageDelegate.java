@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2014 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ package org.springframework.jms.listener.adapter;
 import java.io.Serializable;
 import java.util.Map;
 
-import javax.jms.BytesMessage;
-import javax.jms.MapMessage;
-import javax.jms.ObjectMessage;
-import javax.jms.TextMessage;
+import jakarta.jms.BytesMessage;
+import jakarta.jms.MapMessage;
+import jakarta.jms.ObjectMessage;
+import jakarta.jms.TextMessage;
 
 /**
  * See the MessageListenerAdapterTests class for usage.

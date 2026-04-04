@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,15 +24,23 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.core.annotation.MergedAnnotation.Adapt;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 
 /**
- * Tests for {@link TypeMappedAnnotation}. See also
- * {@link MergedAnnotationsTests} for a much more extensive collection of tests.
+ * Tests for {@link TypeMappedAnnotation}. See also {@link MergedAnnotationsTests}
+ * for a much more extensive collection of tests.
  *
  * @author Phillip Webb
+ * @author Sam Brannen
  */
 class TypeMappedAnnotationTests {
 
@@ -63,10 +71,18 @@ class TypeMappedAnnotationTests {
 	void mappingConventionAliasToMetaAnnotationReturnsMappedValues() {
 		TypeMappedAnnotation<?> annotation = getTypeMappedAnnotation(
 				WithConventionAliasToMetaAnnotation.class,
+				ConventionAliasToMetaAnnotation.class);
+		assertThat(annotation.getString("value")).isEqualTo("value");
+		assertThat(annotation.getString("convention")).isEqualTo("convention");
+
+		annotation = getTypeMappedAnnotation(
+				WithConventionAliasToMetaAnnotation.class,
 				ConventionAliasToMetaAnnotation.class,
 				ConventionAliasMetaAnnotationTarget.class);
-		assertThat(annotation.getString("value")).isEqualTo("");
-		assertThat(annotation.getString("convention")).isEqualTo("convention");
+		assertThat(annotation.getString("value")).isEmpty();
+		// Convention-based annotation attribute overrides are no longer supported as of
+		// Spring Framework 7.0. Otherwise, we would expect "convention".
+		assertThat(annotation.getString("convention")).isEmpty();
 	}
 
 	@Test
@@ -94,10 +110,10 @@ class TypeMappedAnnotationTests {
 
 	@Test
 	void adaptFromNestedMergedAnnotation() {
-		MergedAnnotation<Nested> nested = MergedAnnotation.of(Nested.class);
+		MergedAnnotation<NestedAnnotation> nested = MergedAnnotation.of(NestedAnnotation.class);
 		MergedAnnotation<?> annotation = TypeMappedAnnotation.of(null, null,
 				NestedContainer.class, Collections.singletonMap("value", nested));
-		assertThat(annotation.getAnnotation("value", Nested.class)).isSameAs(nested);
+		assertThat(annotation.getAnnotation("value", NestedAnnotation.class)).isSameAs(nested);
 	}
 
 	@Test
@@ -117,6 +133,121 @@ class TypeMappedAnnotationTests {
 		assertThat(annotation.getClassArray("classArrayValue")).containsExactly(InputStream.class);
 	}
 
+
+	@Nested
+	class AsMapTests {
+
+		@Test  // gh-36586
+		void fromStringToUnresolvableClass() {
+			var attributeName = "classValue";
+			var mergedAnnotation = MergedAnnotation.of(null, null, ClassAttributes.class,
+					Map.of(attributeName, "com.example.DoesNotExist"));
+
+			// 0) Sanity check MergedAnnotation.getClass() behavior.
+			assertThatExceptionOfType(TypeNotPresentException.class)
+					.isThrownBy(() -> mergedAnnotation.getClass(attributeName))
+					.withMessageContaining("com.example.DoesNotExist")
+					.withCauseExactlyInstanceOf(ClassNotFoundException.class);
+
+			var map = mergedAnnotation.asMap(Adapt.values(false, true));
+
+			// 1) Attribute should be present, even though its value is an exception.
+			assertThat(map).containsKey(attributeName);
+			assertThat(map.get(attributeName)).asInstanceOf(throwable(TypeNotPresentException.class))
+					.hasMessageContaining("com.example.DoesNotExist");
+		}
+
+		@Test  // gh-36586
+		void fromStringArrayToUnresolvableClass() {
+			var attributeName = "classArrayValue";
+			var mergedAnnotation = MergedAnnotation.of(null, null, ClassAttributes.class,
+					Map.of(attributeName, new String[] { "com.example.DoesNotExist" }));
+
+			// 0) Sanity check MergedAnnotation.getClassArray() behavior.
+			assertThatExceptionOfType(TypeNotPresentException.class)
+					.isThrownBy(() -> mergedAnnotation.getClassArray(attributeName))
+					.withMessageContaining("com.example.DoesNotExist")
+					.withCauseExactlyInstanceOf(ClassNotFoundException.class);
+
+			var map = mergedAnnotation.asMap(Adapt.values(false, true));
+
+			// 1) Attribute should be present, even though its value is an exception.
+			assertThat(map).containsKey(attributeName);
+			assertThat(map.get(attributeName)).asInstanceOf(throwable(TypeNotPresentException.class))
+					.hasMessageContaining("com.example.DoesNotExist");
+		}
+	}
+
+
+	@Nested
+	class AsAnnotationAttributesTests {
+
+		@Test  // gh-36586
+		void fromStringToUnresolvableClass() {
+			var attributeName = "classValue";
+			var mergedAnnotation = MergedAnnotation.of(null, null, ClassAttributes.class,
+					Map.of(attributeName, "com.example.DoesNotExist"));
+
+			// 0) Sanity check MergedAnnotation.getClass() behavior.
+			assertThatExceptionOfType(TypeNotPresentException.class)
+					.isThrownBy(() -> mergedAnnotation.getClass(attributeName))
+					.withMessageContaining("com.example.DoesNotExist")
+					.withCauseExactlyInstanceOf(ClassNotFoundException.class);
+
+			var attributes = mergedAnnotation.asAnnotationAttributes(Adapt.values(false, true));
+
+			// 1) Attribute should be present, even though its value is an exception.
+			assertThat(attributes).containsKey(attributeName);
+			assertThat(attributes.get(attributeName)).asInstanceOf(throwable(TypeNotPresentException.class))
+					.hasMessageContaining("com.example.DoesNotExist");
+
+			// 2) Accessing the attribute via AnnotationAttributes.getClassArray() should throw an
+			// IllegalArgumentException with the IllegalArgumentException from ClassUtils.resolveClassName()
+			// as its cause.
+			assertAttributeAccessException(attributeName, () -> attributes.getClass(attributeName));
+		}
+
+		@Test  // gh-36586
+		void fromStringArrayToUnresolvableClass() {
+			var attributeName = "classArrayValue";
+			var mergedAnnotation = MergedAnnotation.of(null, null, ClassAttributes.class,
+					Map.of(attributeName, new String[] { "com.example.DoesNotExist" }));
+
+			// 0) Sanity check MergedAnnotation.getClassArray() behavior.
+			assertThatExceptionOfType(TypeNotPresentException.class)
+					.isThrownBy(() -> mergedAnnotation.getClassArray(attributeName))
+					.withMessageContaining("com.example.DoesNotExist")
+					.withCauseExactlyInstanceOf(ClassNotFoundException.class);
+
+			var attributes = mergedAnnotation.asAnnotationAttributes(Adapt.values(false, true));
+
+			// 1) Attribute should be present, even though its value is an exception.
+			assertThat(attributes).containsKey(attributeName);
+			assertThat(attributes.get(attributeName)).asInstanceOf(throwable(TypeNotPresentException.class))
+					.hasMessageContaining("com.example.DoesNotExist");
+
+			// 2) Accessing the attribute via AnnotationAttributes.getClassArray() should throw an
+			// IllegalArgumentException with the IllegalArgumentException from ClassUtils.resolveClassName()
+			// as its cause.
+			assertAttributeAccessException(attributeName, () -> attributes.getClassArray(attributeName));
+		}
+
+		private static void assertAttributeAccessException(String attributeName, ThrowingCallable throwingCallable) {
+			assertThatIllegalArgumentException()
+					.isThrownBy(throwingCallable)
+					.withMessageMatching("""
+							Attribute '%s' for annotation \\[.+?\\] was not resolvable \
+							due to exception \\[.+?TypeNotPresentException.+?\\]""".formatted(attributeName))
+					.havingCause()
+							.isExactlyInstanceOf(TypeNotPresentException.class)
+							.withMessageContaining("com.example.DoesNotExist")
+							.havingCause()
+									.isExactlyInstanceOf(ClassNotFoundException.class)
+									.withMessageContaining("com.example.DoesNotExist");
+		}
+	}
+
+
 	private <A extends Annotation> TypeMappedAnnotation<A> getTypeMappedAnnotation(
 			Class<?> source, Class<A> annotationType) {
 		return getTypeMappedAnnotation(source, annotationType, annotationType);
@@ -132,8 +263,7 @@ class TypeMappedAnnotationTests {
 
 	private AnnotationTypeMapping getMapping(Annotation annotation,
 			Class<? extends Annotation> mappedAnnotationType) {
-		AnnotationTypeMappings mappings = AnnotationTypeMappings.forAnnotationType(
-				annotation.annotationType());
+		AnnotationTypeMappings mappings = AnnotationTypeMappings.forAnnotationType(annotation.annotationType());
 		for (int i = 0; i < mappings.size(); i++) {
 			AnnotationTypeMapping candidate = mappings.get(i);
 			if (candidate.getAnnotationType().equals(mappedAnnotationType)) {
@@ -144,76 +274,69 @@ class TypeMappedAnnotationTests {
 				"No mapping from " + annotation + " to " + mappedAnnotationType);
 	}
 
+
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ExplicitMirror {
+	@interface ExplicitMirror {
 
 		@AliasFor("b")
 		String a() default "";
 
 		@AliasFor("a")
 		String b() default "";
-
 	}
 
 	@ExplicitMirror(a = "test")
 	static class WithExplicitMirrorA {
-
 	}
 
 	@ExplicitMirror(b = "test")
 	static class WithExplicitMirrorB {
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@ExplicitAliasMetaAnnotationTarget(nonAliased = "nonAliased")
-	static @interface ExplicitAliasToMetaAnnotation {
+	@interface ExplicitAliasToMetaAnnotation {
 
 		@AliasFor(annotation = ExplicitAliasMetaAnnotationTarget.class)
 		String aliased() default "";
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ExplicitAliasMetaAnnotationTarget {
+	@interface ExplicitAliasMetaAnnotationTarget {
 
 		String aliased() default "";
 
 		String nonAliased() default "";
-
 	}
 
 	@ExplicitAliasToMetaAnnotation(aliased = "aliased")
 	private static class WithExplicitAliasToMetaAnnotation {
+	}
 
+	@Retention(RetentionPolicy.RUNTIME)
+	@interface ConventionAliasMetaAnnotationTarget {
+
+		String value() default "";
+
+		String convention() default "";
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@ConventionAliasMetaAnnotationTarget
-	static @interface ConventionAliasToMetaAnnotation {
+	@interface ConventionAliasToMetaAnnotation {
 
 		String value() default "";
 
+		// Do NOT use @AliasFor here
 		String convention() default "";
-
-	}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ConventionAliasMetaAnnotationTarget {
-
-		String value() default "";
-
-		String convention() default "";
-
 	}
 
 	@ConventionAliasToMetaAnnotation(value = "value", convention = "convention")
 	private static class WithConventionAliasToMetaAnnotation {
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ArrayTypes {
+	@interface ArrayTypes {
 
 		String[] stringValue();
 
@@ -238,32 +361,30 @@ class TypeMappedAnnotationTests {
 		ExplicitMirror[] annotationValue();
 
 		ExampleEnum[] enumValue();
-
 	}
 
-	enum ExampleEnum {ONE,TWO,THREE}
-
-	@Retention(RetentionPolicy.RUNTIME)
-	static @interface NestedContainer {
-
-		Nested value();
-
+	enum ExampleEnum {
+		ONE, TWO, THREE
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface Nested {
+	@interface NestedContainer {
+
+		NestedAnnotation value();
+	}
+
+	@Retention(RetentionPolicy.RUNTIME)
+	@interface NestedAnnotation {
 
 		String value() default "";
-
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	static @interface ClassAttributes {
+	@interface ClassAttributes {
 
 		Class<?> classValue();
 
 		Class<?>[] classArrayValue();
-
 	}
 
 }

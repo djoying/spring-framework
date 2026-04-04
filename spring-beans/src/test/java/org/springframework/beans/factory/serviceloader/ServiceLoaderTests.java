@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
  * @author Juergen Hoeller
@@ -38,39 +38,36 @@ class ServiceLoaderTests {
 
 	@BeforeAll
 	static void assumeDocumentBuilderFactoryCanBeLoaded() {
-		assumeTrue(ServiceLoader.load(DocumentBuilderFactory.class).iterator().hasNext());
+		assumeThat(ServiceLoader.load(DocumentBuilderFactory.class).iterator()).hasNext();
 	}
 
 	@Test
-	void testServiceLoaderFactoryBean() {
+	void serviceLoaderFactoryBean() {
 		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		RootBeanDefinition bd = new RootBeanDefinition(ServiceLoaderFactoryBean.class);
 		bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
 		bf.registerBeanDefinition("service", bd);
 		ServiceLoader<?> serviceLoader = (ServiceLoader<?>) bf.getBean("service");
-		boolean condition = serviceLoader.iterator().next() instanceof DocumentBuilderFactory;
-		assertThat(condition).isTrue();
+		assertThat(serviceLoader).element(0).isInstanceOf(DocumentBuilderFactory.class);
 	}
 
 	@Test
-	void testServiceFactoryBean() {
+	void serviceFactoryBean() {
 		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		RootBeanDefinition bd = new RootBeanDefinition(ServiceFactoryBean.class);
 		bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
 		bf.registerBeanDefinition("service", bd);
-		boolean condition = bf.getBean("service") instanceof DocumentBuilderFactory;
-		assertThat(condition).isTrue();
+		assertThat(bf.getBean("service")).isInstanceOf(DocumentBuilderFactory.class);
 	}
 
 	@Test
-	void testServiceListFactoryBean() {
+	void serviceListFactoryBean() {
 		DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
 		RootBeanDefinition bd = new RootBeanDefinition(ServiceListFactoryBean.class);
 		bd.getPropertyValues().add("serviceType", DocumentBuilderFactory.class.getName());
 		bf.registerBeanDefinition("service", bd);
 		List<?> serviceList = (List<?>) bf.getBean("service");
-		boolean condition = serviceList.get(0) instanceof DocumentBuilderFactory;
-		assertThat(condition).isTrue();
+		assertThat(serviceList).element(0).isInstanceOf(DocumentBuilderFactory.class);
 	}
 
 }

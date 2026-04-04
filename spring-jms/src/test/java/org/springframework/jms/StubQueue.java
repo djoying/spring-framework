@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package org.springframework.jms;
 
-import javax.jms.Queue;
+import jakarta.jms.Queue;
 
 /**
- * Stub implementation of the {@link javax.jms.Queue} interface.
+ * Stub implementation of the {@link jakarta.jms.Queue} interface.
  *
  * @author Rick Evans
  */

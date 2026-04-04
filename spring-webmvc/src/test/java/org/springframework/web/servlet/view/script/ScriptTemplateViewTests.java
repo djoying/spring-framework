@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import javax.script.ScriptEngine;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledForJreRange;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.context.ApplicationContextException;
@@ -47,7 +46,7 @@ import org.springframework.web.testfixture.servlet.MockServletContext;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.junit.jupiter.api.condition.JRE.JAVA_15;
+import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -57,8 +56,7 @@ import static org.mockito.Mockito.mock;
  *
  * @author Sebastien Deleuze
  */
-@DisabledForJreRange(min = JAVA_15) // Nashorn JavaScript engine removed in Java 15
-public class ScriptTemplateViewTests {
+class ScriptTemplateViewTests {
 
 	private ScriptTemplateView view;
 
@@ -68,7 +66,7 @@ public class ScriptTemplateViewTests {
 
 
 	@BeforeEach
-	public void setup() {
+	void setup() {
 		this.configurer = new ScriptTemplateConfigurer();
 		this.wac = new StaticWebApplicationContext();
 		this.wac.getBeanFactory().registerSingleton("scriptTemplateConfigurer", this.configurer);
@@ -77,7 +75,7 @@ public class ScriptTemplateViewTests {
 
 
 	@Test
-	public void missingTemplate() throws Exception {
+	void missingTemplate() throws Exception {
 		MockServletContext servletContext = new MockServletContext();
 		this.wac.setServletContext(servletContext);
 		this.wac.refresh();
@@ -90,14 +88,14 @@ public class ScriptTemplateViewTests {
 	}
 
 	@Test
-	public void missingScriptTemplateConfig() {
+	void missingScriptTemplateConfig() {
 		assertThatExceptionOfType(ApplicationContextException.class).isThrownBy(() ->
-				this.view.setApplicationContext(new StaticApplicationContext()))
-			.withMessageContaining("ScriptTemplateConfig");
+						this.view.setApplicationContext(new StaticApplicationContext()))
+				.withMessageContaining("ScriptTemplateConfig");
 	}
 
 	@Test
-	public void detectScriptTemplateConfigWithEngine() {
+	void detectScriptTemplateConfigWithEngine() {
 		InvocableScriptEngine engine = mock(InvocableScriptEngine.class);
 		this.configurer.setEngine(engine);
 		this.configurer.setRenderObject("Template");
@@ -113,18 +111,18 @@ public class ScriptTemplateViewTests {
 		assertThat(accessor.getPropertyValue("renderFunction")).isEqualTo("render");
 		assertThat(accessor.getPropertyValue("contentType")).isEqualTo(MediaType.TEXT_PLAIN_VALUE);
 		assertThat(accessor.getPropertyValue("charset")).isEqualTo(StandardCharsets.ISO_8859_1);
-		assertThat(accessor.getPropertyValue("sharedEngine")).isEqualTo(true);
+		assertThat(accessor.getPropertyValue("sharedEngine")).asInstanceOf(BOOLEAN).isTrue();
 	}
 
 	@Test
-	public void detectScriptTemplateConfigWithEngineName() {
-		this.configurer.setEngineName("nashorn");
+	void detectScriptTemplateConfigWithEngineName() {
+		this.configurer.setEngineName("jython");
 		this.configurer.setRenderObject("Template");
 		this.configurer.setRenderFunction("render");
 
 		DirectFieldAccessor accessor = new DirectFieldAccessor(this.view);
 		this.view.setApplicationContext(this.wac);
-		assertThat(accessor.getPropertyValue("engineName")).isEqualTo("nashorn");
+		assertThat(accessor.getPropertyValue("engineName")).isEqualTo("jython");
 		assertThat(accessor.getPropertyValue("engine")).isNotNull();
 		assertThat(accessor.getPropertyValue("renderObject")).isEqualTo("Template");
 		assertThat(accessor.getPropertyValue("renderFunction")).isEqualTo("render");
@@ -133,7 +131,7 @@ public class ScriptTemplateViewTests {
 	}
 
 	@Test
-	public void customEngineAndRenderFunction() {
+	void customEngineAndRenderFunction() {
 		ScriptEngine engine = mock(InvocableScriptEngine.class);
 		given(engine.get("key")).willReturn("value");
 		this.view.setEngine(engine);
@@ -149,9 +147,9 @@ public class ScriptTemplateViewTests {
 	}
 
 	@Test
-	public void nonSharedEngine() throws Exception {
+	void nonSharedEngine() throws Exception {
 		int iterations = 20;
-		this.view.setEngineName("nashorn");
+		this.view.setEngineName("jython");
 		this.view.setRenderFunction("render");
 		this.view.setSharedEngine(false);
 		this.view.setApplicationContext(this.wac);
@@ -168,13 +166,13 @@ public class ScriptTemplateViewTests {
 	}
 
 	@Test
-	public void nonInvocableScriptEngine() {
+	void nonInvocableScriptEngine() {
 		this.view.setEngine(mock(ScriptEngine.class));
 		this.view.setApplicationContext(this.wac);
 	}
 
 	@Test
-	public void nonInvocableScriptEngineWithRenderFunction() {
+	void nonInvocableScriptEngineWithRenderFunction() {
 		this.view.setEngine(mock(ScriptEngine.class));
 		this.view.setRenderFunction("render");
 		assertThatIllegalArgumentException().isThrownBy(() ->
@@ -182,48 +180,48 @@ public class ScriptTemplateViewTests {
 	}
 
 	@Test
-	public void engineAndEngineNameBothDefined() {
+	void engineAndEngineNameBothDefined() {
 		this.view.setEngine(mock(InvocableScriptEngine.class));
 		this.view.setEngineName("test");
 		this.view.setRenderFunction("render");
 		assertThatIllegalArgumentException().isThrownBy(() ->
-				this.view.setApplicationContext(this.wac))
-			.withMessageContaining("You should define either 'engine', 'engineSupplier' or 'engineName'.");
+						this.view.setApplicationContext(this.wac))
+				.withMessageContaining("You should define either 'engine', 'engineSupplier', or 'engineName'.");
 	}
 
 	@Test  // gh-23258
-	public void engineAndEngineSupplierBothDefined() {
+	void engineAndEngineSupplierBothDefined() {
 		ScriptEngine engine = mock(InvocableScriptEngine.class);
 		this.view.setEngineSupplier(() -> engine);
 		this.view.setEngine(engine);
 		this.view.setRenderFunction("render");
 		assertThatIllegalArgumentException().isThrownBy(() ->
-				this.view.setApplicationContext(this.wac))
-				.withMessageContaining("You should define either 'engine', 'engineSupplier' or 'engineName'.");
+						this.view.setApplicationContext(this.wac))
+				.withMessageContaining("You should define either 'engine', 'engineSupplier', or 'engineName'.");
 	}
 
 	@Test  // gh-23258
-	public void engineNameAndEngineSupplierBothDefined() {
+	void engineNameAndEngineSupplierBothDefined() {
 		this.view.setEngineSupplier(() -> mock(InvocableScriptEngine.class));
 		this.view.setEngineName("test");
 		this.view.setRenderFunction("render");
 		assertThatIllegalArgumentException().isThrownBy(() ->
-				this.view.setApplicationContext(this.wac))
-				.withMessageContaining("You should define either 'engine', 'engineSupplier' or 'engineName'.");
+						this.view.setApplicationContext(this.wac))
+				.withMessageContaining("You should define either 'engine', 'engineSupplier', or 'engineName'.");
 	}
 
 	@Test
-	public void engineSetterAndNonSharedEngine() {
+	void engineSetterAndNonSharedEngine() {
 		this.view.setEngine(mock(InvocableScriptEngine.class));
 		this.view.setRenderFunction("render");
 		this.view.setSharedEngine(false);
 		assertThatIllegalArgumentException().isThrownBy(() ->
-				this.view.setApplicationContext(this.wac))
-			.withMessageContaining("sharedEngine");
+						this.view.setApplicationContext(this.wac))
+				.withMessageContaining("sharedEngine");
 	}
 
 	@Test // SPR-14210
-	public void resourceLoaderPath() throws Exception {
+	void resourceLoaderPath() throws Exception {
 		MockServletContext servletContext = new MockServletContext();
 		this.wac.setServletContext(servletContext);
 		this.wac.refresh();
@@ -239,22 +237,29 @@ public class ScriptTemplateViewTests {
 		this.view.setUrl("org/springframework/web/servlet/view/script/empty.txt");
 		this.view.render(model, request, response);
 		assertThat(response.getContentAsString()).isEqualTo("foo");
+		DirectFieldAccessor viewAccessor = new DirectFieldAccessor(this.view);
+		String[] resourceLoaderPaths = (String[]) viewAccessor.getPropertyValue("resourceLoaderPaths");
+		assertThat(resourceLoaderPaths).containsExactly("classpath:");
 
 		response = new MockHttpServletResponse();
 		this.view.setResourceLoaderPath("classpath:org/springframework/web/servlet/view/script/");
 		this.view.setUrl("empty.txt");
 		this.view.render(model, request, response);
 		assertThat(response.getContentAsString()).isEqualTo("foo");
+		resourceLoaderPaths = (String[]) viewAccessor.getPropertyValue("resourceLoaderPaths");
+		assertThat(resourceLoaderPaths).containsExactly("classpath:org/springframework/web/servlet/view/script/");
 
 		response = new MockHttpServletResponse();
 		this.view.setResourceLoaderPath("classpath:org/springframework/web/servlet/view/script");
 		this.view.setUrl("empty.txt");
 		this.view.render(model, request, response);
 		assertThat(response.getContentAsString()).isEqualTo("foo");
+		resourceLoaderPaths = (String[]) viewAccessor.getPropertyValue("resourceLoaderPaths");
+		assertThat(resourceLoaderPaths).containsExactly("classpath:org/springframework/web/servlet/view/script/");
 	}
 
 	@Test // SPR-13379
-	public void contentType() throws Exception {
+	void contentType() throws Exception {
 		MockServletContext servletContext = new MockServletContext();
 		this.wac.setServletContext(servletContext);
 		this.wac.refresh();
@@ -287,7 +292,7 @@ public class ScriptTemplateViewTests {
 	}
 
 	@Test  // gh-23258
-	public void engineSupplierWithSharedEngine() {
+	void engineSupplierWithSharedEngine() {
 		this.configurer.setEngineSupplier(() -> mock(InvocableScriptEngine.class));
 		this.configurer.setRenderObject("Template");
 		this.configurer.setRenderFunction("render");
@@ -301,11 +306,11 @@ public class ScriptTemplateViewTests {
 		assertThat(engine2).isNotNull();
 		assertThat(accessor.getPropertyValue("renderObject")).isEqualTo("Template");
 		assertThat(accessor.getPropertyValue("renderFunction")).isEqualTo("render");
-		assertThat(accessor.getPropertyValue("sharedEngine")).isEqualTo(true);
+		assertThat(accessor.getPropertyValue("sharedEngine")).asInstanceOf(BOOLEAN).isTrue();
 	}
 
 	@Test  // gh-23258
-	public void engineSupplierWithNonSharedEngine() {
+	void engineSupplierWithNonSharedEngine() {
 		this.configurer.setEngineSupplier(() -> mock(InvocableScriptEngine.class));
 		this.configurer.setRenderObject("Template");
 		this.configurer.setRenderFunction("render");
@@ -319,7 +324,7 @@ public class ScriptTemplateViewTests {
 		assertThat(engine2).isNotNull();
 		assertThat(accessor.getPropertyValue("renderObject")).isEqualTo("Template");
 		assertThat(accessor.getPropertyValue("renderFunction")).isEqualTo("render");
-		assertThat(accessor.getPropertyValue("sharedEngine")).isEqualTo(false);
+		assertThat(accessor.getPropertyValue("sharedEngine")).asInstanceOf(BOOLEAN).isFalse();
 	}
 
 	private interface InvocableScriptEngine extends ScriptEngine, Invocable {

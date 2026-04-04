@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,11 @@
 
 package org.springframework.aop.framework.autoproxy;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import javax.servlet.ServletException;
-
+import jakarta.servlet.ServletException;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.support.AopUtils;
@@ -33,7 +32,6 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.testfixture.beans.ITestBean;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.springframework.lang.Nullable;
 import org.springframework.transaction.NoTransactionException;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.testfixture.CallCountingTransactionManager;
@@ -62,12 +60,12 @@ class AdvisorAutoProxyCreatorIntegrationTests {
 	/**
 	 * Return a bean factory with attributes and EnterpriseServices configured.
 	 */
-	protected BeanFactory getBeanFactory() throws IOException {
+	protected BeanFactory getBeanFactory() {
 		return new ClassPathXmlApplicationContext(DEFAULT_CONTEXT, CLASS);
 	}
 
 	@Test
-	void testDefaultExclusionPrefix() throws Exception {
+	void defaultExclusionPrefix() {
 		DefaultAdvisorAutoProxyCreator aapc = (DefaultAdvisorAutoProxyCreator) getBeanFactory().getBean(ADVISOR_APC_BEAN_NAME);
 		assertThat(aapc.getAdvisorBeanNamePrefix()).isEqualTo((ADVISOR_APC_BEAN_NAME + DefaultAdvisorAutoProxyCreator.SEPARATOR));
 		assertThat(aapc.isUsePrefix()).isFalse();
@@ -77,21 +75,21 @@ class AdvisorAutoProxyCreatorIntegrationTests {
 	 * If no pointcuts match (no attrs) there should be proxying.
 	 */
 	@Test
-	void testNoProxy() throws Exception {
+	void noProxy() {
 		BeanFactory bf = getBeanFactory();
 		Object o = bf.getBean("noSetters");
 		assertThat(AopUtils.isAopProxy(o)).isFalse();
 	}
 
 	@Test
-	void testTxIsProxied() throws Exception {
+	void txIsProxied() {
 		BeanFactory bf = getBeanFactory();
 		ITestBean test = (ITestBean) bf.getBean("test");
 		assertThat(AopUtils.isAopProxy(test)).isTrue();
 	}
 
 	@Test
-	void testRegexpApplied() throws Exception {
+	void regexpApplied() {
 		BeanFactory bf = getBeanFactory();
 		ITestBean test = (ITestBean) bf.getBean("test");
 		MethodCounter counter = (MethodCounter) bf.getBean("countingAdvice");
@@ -101,7 +99,7 @@ class AdvisorAutoProxyCreatorIntegrationTests {
 	}
 
 	@Test
-	void testTransactionAttributeOnMethod() throws Exception {
+	void transactionAttributeOnMethod() {
 		BeanFactory bf = getBeanFactory();
 		ITestBean test = (ITestBean) bf.getBean("test");
 
@@ -123,7 +121,7 @@ class AdvisorAutoProxyCreatorIntegrationTests {
 	 * Should not roll back on servlet exception.
 	 */
 	@Test
-	void testRollbackRulesOnMethodCauseRollback() throws Exception {
+	void rollbackRulesOnMethodCauseRollback() throws Exception {
 		BeanFactory bf = getBeanFactory();
 		Rollback rb = (Rollback) bf.getBean("rollback");
 
@@ -149,7 +147,7 @@ class AdvisorAutoProxyCreatorIntegrationTests {
 	}
 
 	@Test
-	void testRollbackRulesOnMethodPreventRollback() throws Exception {
+	void rollbackRulesOnMethodPreventRollback() throws Exception {
 		BeanFactory bf = getBeanFactory();
 		Rollback rb = (Rollback) bf.getBean("rollback");
 
@@ -160,19 +158,17 @@ class AdvisorAutoProxyCreatorIntegrationTests {
 		try {
 			rb.echoException(new ServletException());
 		}
-		catch (ServletException ex) {
-
+		catch (ServletException ignored) {
 		}
 		assertThat(txMan.commits).as("Transaction counts match").isEqualTo(1);
 	}
 
 	@Test
-	void testProgrammaticRollback() throws Exception {
+	void programmaticRollback() {
 		BeanFactory bf = getBeanFactory();
 
 		Object bean = bf.getBean(TXMANAGER_BEAN_NAME);
-		boolean condition = bean instanceof CallCountingTransactionManager;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(CallCountingTransactionManager.class);
 		CallCountingTransactionManager txMan = (CallCountingTransactionManager) bf.getBean(TXMANAGER_BEAN_NAME);
 
 		Rollback rb = (Rollback) bf.getBean("rollback");
@@ -251,7 +247,7 @@ class OrderedTxCheckAdvisor extends StaticMethodMatcherPointcutAdvisor implement
 	}
 
 	@Override
-	public void afterPropertiesSet() throws Exception {
+	public void afterPropertiesSet() {
 		setAdvice(new TxCountingBeforeAdvice());
 	}
 
@@ -274,7 +270,7 @@ class OrderedTxCheckAdvisor extends StaticMethodMatcherPointcutAdvisor implement
 					TransactionInterceptor.currentTransactionStatus();
 					throw new RuntimeException("Shouldn't have a transaction");
 				}
-				catch (NoTransactionException ex) {
+				catch (NoTransactionException ignored) {
 					// this is Ok
 				}
 			}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,31 +32,31 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Stephane Nicoll
  */
-public class AnnotationDrivenBeanDefinitionParserTests {
+class AnnotationDrivenBeanDefinitionParserTests {
 
 	private ConfigurableApplicationContext context;
 
 	@BeforeEach
-	public void setup() {
+	void setup() {
 		this.context = new ClassPathXmlApplicationContext(
 				"annotationDrivenContext.xml", AnnotationDrivenBeanDefinitionParserTests.class);
 	}
 
 	@AfterEach
-	public void after() {
+	void after() {
 		if (this.context != null) {
 			this.context.close();
 		}
 	}
 
 	@Test
-	public void asyncAspectRegistered() {
+	void asyncAspectRegistered() {
 		assertThat(context.containsBean(TaskManagementConfigUtils.ASYNC_EXECUTION_ASPECT_BEAN_NAME)).isTrue();
 	}
 
 	@Test
 	@SuppressWarnings("rawtypes")
-	public void asyncPostProcessorExecutorReference() {
+	void asyncPostProcessorExecutorReference() {
 		Object executor = context.getBean("testExecutor");
 		Object aspect = context.getBean(TaskManagementConfigUtils.ASYNC_EXECUTION_ASPECT_BEAN_NAME);
 		assertThat(((Supplier) new DirectFieldAccessor(aspect).getPropertyValue("defaultExecutor")).get()).isSameAs(executor);
@@ -64,7 +64,7 @@ public class AnnotationDrivenBeanDefinitionParserTests {
 
 	@Test
 	@SuppressWarnings("rawtypes")
-	public void asyncPostProcessorExceptionHandlerReference() {
+	void asyncPostProcessorExceptionHandlerReference() {
 		Object exceptionHandler = context.getBean("testExceptionHandler");
 		Object aspect = context.getBean(TaskManagementConfigUtils.ASYNC_EXECUTION_ASPECT_BEAN_NAME);
 		assertThat(((Supplier) new DirectFieldAccessor(aspect).getPropertyValue("exceptionHandler")).get()).isSameAs(exceptionHandler);

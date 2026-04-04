@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package org.springframework.context.testfixture.cache;
 import java.util.Collection;
 import java.util.UUID;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -46,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatIOException;
  */
 public abstract class AbstractCacheAnnotationTests {
 
+	@AutoClose
 	protected ConfigurableApplicationContext ctx;
 
 	protected CacheableService<?> cs;
@@ -62,7 +63,7 @@ public abstract class AbstractCacheAnnotationTests {
 
 
 	@BeforeEach
-	public void setup() {
+	void setup() {
 		this.ctx = getApplicationContext();
 		this.cs = ctx.getBean("service", CacheableService.class);
 		this.ccs = ctx.getBean("classService", CacheableService.class);
@@ -70,13 +71,6 @@ public abstract class AbstractCacheAnnotationTests {
 
 		Collection<String> cn = this.cm.getCacheNames();
 		assertThat(cn).containsOnly("testCache", "secondary", "primary");
-	}
-
-	@AfterEach
-	public void close() {
-		if (this.ctx != null) {
-			this.ctx.close();
-		}
 	}
 
 
@@ -446,7 +440,7 @@ public abstract class AbstractCacheAnnotationTests {
 
 	protected void testMultiEvict(CacheableService<?> service) {
 		Object o1 = new Object();
-		Object o2 = o1.toString() + "A";
+		Object o2 = o1 + "A";
 
 
 		Object r1 = service.multiCache(o1);
@@ -504,6 +498,26 @@ public abstract class AbstractCacheAnnotationTests {
 		assertThat(primary.get(id).get()).isSameAs(entity);
 	}
 
+	protected void testPutRefersToResultWithUnless(CacheableService<?> service) {
+		Long id = 42L;
+		TestEntity entity = new TestEntity();
+		entity.setId(id);
+		Cache primary = this.cm.getCache("primary");
+		assertThat(primary.get(id)).isNull();
+		assertThat(service.putEvaluatesUnlessBeforeKey(entity)).isNotNull();
+		assertThat(primary.get(id).get()).isSameAs(entity);
+	}
+
+	protected void testPutEvaluatesUnlessBeforeKey(CacheableService<?> service) {
+		Long id = Long.MIN_VALUE; // return null
+		TestEntity entity = new TestEntity();
+		entity.setId(id);
+		Cache primary = this.cm.getCache("primary");
+		assertThat(primary.get(id)).isNull();
+		assertThat(service.putEvaluatesUnlessBeforeKey(entity)).isNull();
+		assertThat(primary.get(id)).isNull();
+	}
+
 	protected void testMultiCacheAndEvict(CacheableService<?> service) {
 		String methodName = "multiCacheAndEvict";
 
@@ -538,7 +552,7 @@ public abstract class AbstractCacheAnnotationTests {
 		Object r1 = service.multiConditionalCacheAndEvict(key);
 		Object r3 = service.multiConditionalCacheAndEvict(key);
 
-		assertThat(!r1.equals(r3)).isTrue();
+		assertThat(r1).isNotEqualTo(r3);
 		assertThat(primary.get(key)).isNull();
 
 		Object key2 = 3;
@@ -551,132 +565,132 @@ public abstract class AbstractCacheAnnotationTests {
 	}
 
 	@Test
-	public void testCacheable() {
+	protected void cacheable() {
 		testCacheable(this.cs);
 	}
 
 	@Test
-	public void testCacheableNull() {
+	protected void cacheableNull() {
 		testCacheableNull(this.cs);
 	}
 
 	@Test
-	public void testCacheableSync() {
+	protected void cacheableSync() {
 		testCacheableSync(this.cs);
 	}
 
 	@Test
-	public void testCacheableSyncNull() {
+	protected void cacheableSyncNull() {
 		testCacheableSyncNull(this.cs);
 	}
 
 	@Test
-	public void testEvict() {
+	protected void evict() {
 		testEvict(this.cs, true);
 	}
 
 	@Test
-	public void testEvictEarly() {
+	protected void evictEarly() {
 		testEvictEarly(this.cs);
 	}
 
 	@Test
-	public void testEvictWithException() {
+	protected void evictWithException() {
 		testEvictException(this.cs);
 	}
 
 	@Test
-	public void testEvictAll() {
+	protected void evictAll() {
 		testEvictAll(this.cs, true);
 	}
 
 	@Test
-	public void testEvictAllEarly() {
+	protected void evictAllEarly() {
 		testEvictAllEarly(this.cs);
 	}
 
 	@Test
-	public void testEvictWithKey() {
+	protected void evictWithKey() {
 		testEvictWithKey(this.cs);
 	}
 
 	@Test
-	public void testEvictWithKeyEarly() {
+	protected void evictWithKeyEarly() {
 		testEvictWithKeyEarly(this.cs);
 	}
 
 	@Test
-	public void testConditionalExpression() {
+	protected void conditionalExpression() {
 		testConditionalExpression(this.cs);
 	}
 
 	@Test
-	public void testConditionalExpressionSync() {
+	protected void conditionalExpressionSync() {
 		testConditionalExpressionSync(this.cs);
 	}
 
 	@Test
-	public void testUnlessExpression() {
+	protected void unlessExpression() {
 		testUnlessExpression(this.cs);
 	}
 
 	@Test
-	public void testClassCacheUnlessExpression() {
+	protected void classCacheUnlessExpression() {
 		testUnlessExpression(this.cs);
 	}
 
 	@Test
-	public void testKeyExpression() {
+	protected void keyExpression() {
 		testKeyExpression(this.cs);
 	}
 
 	@Test
-	public void testVarArgsKey() {
+	protected void varArgsKey() {
 		testVarArgsKey(this.cs);
 	}
 
 	@Test
-	public void testClassCacheCacheable() {
+	protected void classCacheCacheable() {
 		testCacheable(this.ccs);
 	}
 
 	@Test
-	public void testClassCacheEvict() {
+	protected void classCacheEvict() {
 		testEvict(this.ccs, true);
 	}
 
 	@Test
-	public void testClassEvictEarly() {
+	protected void classEvictEarly() {
 		testEvictEarly(this.ccs);
 	}
 
 	@Test
-	public void testClassEvictAll() {
+	protected void classEvictAll() {
 		testEvictAll(this.ccs, true);
 	}
 
 	@Test
-	public void testClassEvictWithException() {
+	protected void classEvictWithException() {
 		testEvictException(this.ccs);
 	}
 
 	@Test
-	public void testClassCacheEvictWithWKey() {
+	protected void classCacheEvictWithWKey() {
 		testEvictWithKey(this.ccs);
 	}
 
 	@Test
-	public void testClassEvictWithKeyEarly() {
+	protected void classEvictWithKeyEarly() {
 		testEvictWithKeyEarly(this.ccs);
 	}
 
 	@Test
-	public void testNullValue() {
+	protected void nullValue() {
 		testNullValue(this.cs);
 	}
 
 	@Test
-	public void testClassNullValue() {
+	protected void classNullValue() {
 		Object key = new Object();
 		assertThat(this.ccs.nullValue(key)).isNull();
 		int nr = this.ccs.nullInvocations().intValue();
@@ -689,27 +703,27 @@ public abstract class AbstractCacheAnnotationTests {
 	}
 
 	@Test
-	public void testMethodName() {
+	protected void methodName() {
 		testMethodName(this.cs, "name");
 	}
 
 	@Test
-	public void testClassMethodName() {
+	protected void classMethodName() {
 		testMethodName(this.ccs, "nametestCache");
 	}
 
 	@Test
-	public void testRootVars() {
+	protected void rootVars() {
 		testRootVars(this.cs);
 	}
 
 	@Test
-	public void testClassRootVars() {
+	protected void classRootVars() {
 		testRootVars(this.ccs);
 	}
 
 	@Test
-	public void testCustomKeyGenerator() {
+	protected void customKeyGenerator() {
 		Object param = new Object();
 		Object r1 = this.cs.customKeyGenerator(param);
 		assertThat(this.cs.customKeyGenerator(param)).isSameAs(r1);
@@ -720,14 +734,14 @@ public abstract class AbstractCacheAnnotationTests {
 	}
 
 	@Test
-	public void testUnknownCustomKeyGenerator() {
+	protected void unknownCustomKeyGenerator() {
 		Object param = new Object();
 		assertThatExceptionOfType(NoSuchBeanDefinitionException.class).isThrownBy(() ->
 				this.cs.unknownCustomKeyGenerator(param));
 	}
 
 	@Test
-	public void testCustomCacheManager() {
+	protected void customCacheManager() {
 		CacheManager customCm = this.ctx.getBean("customCacheManager", CacheManager.class);
 		Object key = new Object();
 		Object r1 = this.cs.customCacheManager(key);
@@ -738,139 +752,159 @@ public abstract class AbstractCacheAnnotationTests {
 	}
 
 	@Test
-	public void testUnknownCustomCacheManager() {
+	protected void unknownCustomCacheManager() {
 		Object param = new Object();
 		assertThatExceptionOfType(NoSuchBeanDefinitionException.class).isThrownBy(() ->
 				this.cs.unknownCustomCacheManager(param));
 	}
 
 	@Test
-	public void testNullArg() {
+	protected void nullArg() {
 		testNullArg(this.cs);
 	}
 
 	@Test
-	public void testClassNullArg() {
+	protected void classNullArg() {
 		testNullArg(this.ccs);
 	}
 
 	@Test
-	public void testCheckedException() {
+	protected void checkedException() {
 		testCheckedThrowable(this.cs);
 	}
 
 	@Test
-	public void testClassCheckedException() {
+	protected void classCheckedException() {
 		testCheckedThrowable(this.ccs);
 	}
 
 	@Test
-	public void testCheckedExceptionSync() {
+	protected void checkedExceptionSync() {
 		testCheckedThrowableSync(this.cs);
 	}
 
 	@Test
-	public void testClassCheckedExceptionSync() {
+	protected void classCheckedExceptionSync() {
 		testCheckedThrowableSync(this.ccs);
 	}
 
 	@Test
-	public void testUncheckedException() {
+	protected void uncheckedException() {
 		testUncheckedThrowable(this.cs);
 	}
 
 	@Test
-	public void testClassUncheckedException() {
+	protected void classUncheckedException() {
 		testUncheckedThrowable(this.ccs);
 	}
 
 	@Test
-	public void testUncheckedExceptionSync() {
+	protected void uncheckedExceptionSync() {
 		testUncheckedThrowableSync(this.cs);
 	}
 
 	@Test
-	public void testClassUncheckedExceptionSync() {
+	protected void classUncheckedExceptionSync() {
 		testUncheckedThrowableSync(this.ccs);
 	}
 
 	@Test
-	public void testUpdate() {
+	protected void update() {
 		testCacheUpdate(this.cs);
 	}
 
 	@Test
-	public void testClassUpdate() {
+	protected void classUpdate() {
 		testCacheUpdate(this.ccs);
 	}
 
 	@Test
-	public void testConditionalUpdate() {
+	protected void conditionalUpdate() {
 		testConditionalCacheUpdate(this.cs);
 	}
 
 	@Test
-	public void testClassConditionalUpdate() {
+	protected void classConditionalUpdate() {
 		testConditionalCacheUpdate(this.ccs);
 	}
 
 	@Test
-	public void testMultiCache() {
+	protected void multiCache() {
 		testMultiCache(this.cs);
 	}
 
 	@Test
-	public void testClassMultiCache() {
+	protected void classMultiCache() {
 		testMultiCache(this.ccs);
 	}
 
 	@Test
-	public void testMultiEvict() {
+	protected void multiEvict() {
 		testMultiEvict(this.cs);
 	}
 
 	@Test
-	public void testClassMultiEvict() {
+	protected void classMultiEvict() {
 		testMultiEvict(this.ccs);
 	}
 
 	@Test
-	public void testMultiPut() {
+	protected void multiPut() {
 		testMultiPut(this.cs);
 	}
 
 	@Test
-	public void testClassMultiPut() {
+	protected void classMultiPut() {
 		testMultiPut(this.ccs);
 	}
 
 	@Test
-	public void testPutRefersToResult() {
+	protected void putRefersToResult() {
 		testPutRefersToResult(this.cs);
 	}
 
 	@Test
-	public void testClassPutRefersToResult() {
+	protected void putRefersToResultWithUnless() {
+		testPutRefersToResultWithUnless(this.cs);
+	}
+
+	@Test
+	protected void putEvaluatesUnlessBeforeKey() {
+		testPutEvaluatesUnlessBeforeKey(this.cs);
+	}
+
+	@Test
+	protected void classPutRefersToResult() {
 		testPutRefersToResult(this.ccs);
 	}
 
 	@Test
-	public void testMultiCacheAndEvict() {
+	protected void classPutRefersToResultWithUnless(){
+		testPutRefersToResultWithUnless(this.ccs);
+	}
+
+	@Test
+	protected void classPutEvaluatesUnlessBeforeKey(){
+		testPutEvaluatesUnlessBeforeKey(this.ccs);
+	}
+
+	@Test
+	protected void multiCacheAndEvict() {
 		testMultiCacheAndEvict(this.cs);
 	}
 
 	@Test
-	public void testClassMultiCacheAndEvict() {
+	protected void classMultiCacheAndEvict() {
 		testMultiCacheAndEvict(this.ccs);
 	}
 
 	@Test
-	public void testMultiConditionalCacheAndEvict() {
+	protected void multiConditionalCacheAndEvict() {
 		testMultiConditionalCacheAndEvict(this.cs);
 	}
 
 	@Test
-	public void testClassMultiConditionalCacheAndEvict() {
+	protected void classMultiConditionalCacheAndEvict() {
 		testMultiConditionalCacheAndEvict(this.ccs);
 	}
 

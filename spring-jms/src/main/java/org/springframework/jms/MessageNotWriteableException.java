@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2012 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@ package org.springframework.jms;
  *
  * @author Mark Pollack
  * @since 1.1
- * @see javax.jms.MessageNotWriteableException
+ * @see jakarta.jms.MessageNotWriteableException
  */
 @SuppressWarnings("serial")
 public class MessageNotWriteableException extends JmsException {
 
-	public MessageNotWriteableException(javax.jms.MessageNotWriteableException cause) {
+	public MessageNotWriteableException(jakarta.jms.MessageNotWriteableException cause) {
 		super(cause);
 	}
 

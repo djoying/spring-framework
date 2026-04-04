@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@
 
 package org.springframework.context.annotation.configuration.spr9031;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,25 +28,23 @@ import org.springframework.context.annotation.configuration.spr9031.scanpackage.
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-
 /**
  * Unit tests cornering bug SPR-9031.
  *
  * @author Chris Beams
  * @since 3.1.1
  */
-public class Spr9031Tests {
+class Spr9031Tests {
 
 	/**
 	 * Use of @Import to register LowLevelConfig results in ASM-based annotation
 	 * processing.
 	 */
 	@Test
-	public void withAsmAnnotationProcessing() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(HighLevelConfig.class);
-		ctx.refresh();
+	void withAsmAnnotationProcessing() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(HighLevelConfig.class);
 		assertThat(ctx.getBean(LowLevelConfig.class).scanned).isNotNull();
+		ctx.close();
 	}
 
 	/**
@@ -57,12 +52,12 @@ public class Spr9031Tests {
 	 * processing.
 	 */
 	@Test
-	public void withoutAsmAnnotationProcessing() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
-		ctx.register(LowLevelConfig.class);
-		ctx.refresh();
+	void withoutAsmAnnotationProcessing() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(LowLevelConfig.class);
 		assertThat(ctx.getBean(LowLevelConfig.class).scanned).isNotNull();
+		ctx.close();
 	}
+
 
 	@Configuration
 	@Import(LowLevelConfig.class)
@@ -78,6 +73,4 @@ public class Spr9031Tests {
 		@Autowired Spr9031Component scanned;
 	}
 
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface MarkerAnnotation {}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -166,8 +166,7 @@ class ClassPathBeanDefinitionScannerScopeIntegrationTests {
 
 		// should be dynamic proxy, implementing both interfaces
 		assertThat(AopUtils.isJdkDynamicProxy(bean)).isTrue();
-		boolean condition = bean instanceof AnotherScopeTestInterface;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(AnotherScopeTestInterface.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -188,8 +187,7 @@ class ClassPathBeanDefinitionScannerScopeIntegrationTests {
 
 		// should be a class-based proxy
 		assertThat(AopUtils.isCglibProxy(bean)).isTrue();
-		boolean condition = bean instanceof RequestScopedTestBean;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(RequestScopedTestBean.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -231,8 +229,7 @@ class ClassPathBeanDefinitionScannerScopeIntegrationTests {
 
 		// should be dynamic proxy, implementing both interfaces
 		assertThat(AopUtils.isJdkDynamicProxy(bean)).isTrue();
-		boolean condition = bean instanceof AnotherScopeTestInterface;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(AnotherScopeTestInterface.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -259,10 +256,8 @@ class ClassPathBeanDefinitionScannerScopeIntegrationTests {
 
 		// should be a class-based proxy
 		assertThat(AopUtils.isCglibProxy(bean)).isTrue();
-		boolean condition1 = bean instanceof ScopedTestBean;
-		assertThat(condition1).isTrue();
-		boolean condition = bean instanceof SessionScopedTestBean;
-		assertThat(condition).isTrue();
+		assertThat(bean).isInstanceOf(ScopedTestBean.class);
+		assertThat(bean).isInstanceOf(SessionScopedTestBean.class);
 
 		assertThat(bean.getName()).isEqualTo(DEFAULT_NAME);
 		bean.setName(MODIFIED_NAME);
@@ -306,7 +301,7 @@ class ClassPathBeanDefinitionScannerScopeIntegrationTests {
 	}
 
 
-	static abstract class ScopedTestBean implements IScopedTestBean {
+	abstract static class ScopedTestBean implements IScopedTestBean {
 
 		private String name = DEFAULT_NAME;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,39 +44,36 @@ import static org.mockito.Mockito.verify;
  *
  * @author Thomas Risberg
  */
-public class TableMetaDataContextTests  {
+class TableMetaDataContextTests {
 
-	private Connection connection;
+	private DataSource dataSource = mock();
 
-	private DataSource dataSource;
+	private Connection connection = mock();
 
-	private DatabaseMetaData databaseMetaData;
+	private DatabaseMetaData databaseMetaData = mock();
 
 	private TableMetaDataContext context = new TableMetaDataContext();
 
 
 	@BeforeEach
-	public void setUp() throws Exception {
-		connection = mock(Connection.class);
-		dataSource = mock(DataSource.class);
-		databaseMetaData = mock(DatabaseMetaData.class);
+	void setUp() throws Exception {
 		given(connection.getMetaData()).willReturn(databaseMetaData);
 		given(dataSource.getConnection()).willReturn(connection);
 	}
 
 
 	@Test
-	public void testMatchInParametersAndSqlTypeInfoWrapping() throws Exception {
+	void matchInParametersAndSqlTypeInfoWrapping() throws Exception {
 		final String TABLE = "customers";
 		final String USER = "me";
 
-		ResultSet metaDataResultSet = mock(ResultSet.class);
+		ResultSet metaDataResultSet = mock();
 		given(metaDataResultSet.next()).willReturn(true, false);
 		given(metaDataResultSet.getString("TABLE_SCHEM")).willReturn(USER);
 		given(metaDataResultSet.getString("TABLE_NAME")).willReturn(TABLE);
 		given(metaDataResultSet.getString("TABLE_TYPE")).willReturn("TABLE");
 
-		ResultSet columnsResultSet = mock(ResultSet.class);
+		ResultSet columnsResultSet = mock();
 		given(columnsResultSet.next()).willReturn(
 				true, true, true, true, false);
 		given(columnsResultSet.getString("COLUMN_NAME")).willReturn(
@@ -107,14 +104,10 @@ public class TableMetaDataContextTests  {
 		List<Object> values = context.matchInParameterValuesWithInsertColumns(map);
 
 		assertThat(values.size()).as("wrong number of parameters: ").isEqualTo(4);
-		boolean condition3 = values.get(0) instanceof Number;
-		assertThat(condition3).as("id not wrapped with type info").isTrue();
-		boolean condition2 = values.get(1) instanceof String;
-		assertThat(condition2).as("name not wrapped with type info").isTrue();
-		boolean condition1 = values.get(2) instanceof SqlParameterValue;
-		assertThat(condition1).as("date wrapped with type info").isTrue();
-		boolean condition = values.get(3) instanceof SqlParameterValue;
-		assertThat(condition).as("version wrapped with type info").isTrue();
+		assertThat(values.get(0)).as("id not wrapped with type info").isInstanceOf(Number.class);
+		assertThat(values.get(1)).as("name not wrapped with type info").isInstanceOf(String.class);
+		assertThat(values.get(2)).as("date wrapped with type info").isInstanceOf(SqlParameterValue.class);
+		assertThat(values.get(3)).as("version wrapped with type info").isInstanceOf(SqlParameterValue.class);
 		verify(metaDataResultSet, atLeastOnce()).next();
 		verify(columnsResultSet, atLeastOnce()).next();
 		verify(metaDataResultSet).close();
@@ -122,17 +115,17 @@ public class TableMetaDataContextTests  {
 	}
 
 	@Test
-	public void testTableWithSingleColumnGeneratedKey() throws Exception {
+	void tableWithSingleColumnGeneratedKey() throws Exception {
 		final String TABLE = "customers";
 		final String USER = "me";
 
-		ResultSet metaDataResultSet = mock(ResultSet.class);
+		ResultSet metaDataResultSet = mock();
 		given(metaDataResultSet.next()).willReturn(true, false);
 		given(metaDataResultSet.getString("TABLE_SCHEM")).willReturn(USER);
 		given(metaDataResultSet.getString("TABLE_NAME")).willReturn(TABLE);
 		given(metaDataResultSet.getString("TABLE_TYPE")).willReturn("TABLE");
 
-		ResultSet columnsResultSet = mock(ResultSet.class);
+		ResultSet columnsResultSet = mock();
 		given(columnsResultSet.next()).willReturn(true, false);
 		given(columnsResultSet.getString("COLUMN_NAME")).willReturn("id");
 		given(columnsResultSet.getInt("DATA_TYPE")).willReturn(Types.INTEGER);

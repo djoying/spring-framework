@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,13 @@
 
 package org.springframework.test.web.client.samples.matchers;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.StringHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.Person;
 import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
@@ -42,40 +34,34 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  *
  * @author Rossen Stoyanchev
  */
-public class HeaderRequestMatchersIntegrationTests {
+class HeaderRequestMatchersIntegrationTests {
 
 	private static final String RESPONSE_BODY = "{\"name\" : \"Ludwig van Beethoven\", \"someDouble\" : \"1.6035\"}";
 
+	private RestClient restClient;
 
 	private MockRestServiceServer mockServer;
 
-	private RestTemplate restTemplate;
-
 
 	@BeforeEach
-	public void setup() {
-		List<HttpMessageConverter<?>> converters = new ArrayList<>();
-		converters.add(new StringHttpMessageConverter());
-		converters.add(new MappingJackson2HttpMessageConverter());
-
-		this.restTemplate = new RestTemplate();
-		this.restTemplate.setMessageConverters(converters);
-
-		this.mockServer = MockRestServiceServer.createServer(this.restTemplate);
+	void setup() {
+		RestClient.Builder clientBuilder = RestClient.builder();
+		this.mockServer = MockRestServiceServer.createServer(clientBuilder);
+		this.restClient = clientBuilder.build();
 	}
 
 
 	@Test
-	public void testString() throws Exception {
+	void string() {
 		this.mockServer.expect(requestTo("/person/1"))
-			.andExpect(header("Accept", "application/json, application/*+json"))
+			.andExpect(header("Accept", "application/json"))
 			.andRespond(withSuccess(RESPONSE_BODY, MediaType.APPLICATION_JSON));
 
 		executeAndVerify();
 	}
 
 	@Test
-	public void testStringContains() throws Exception {
+	void stringContains() {
 		this.mockServer.expect(requestTo("/person/1"))
 			.andExpect(header("Accept", containsString("json")))
 			.andRespond(withSuccess(RESPONSE_BODY, MediaType.APPLICATION_JSON));
@@ -83,8 +69,8 @@ public class HeaderRequestMatchersIntegrationTests {
 		executeAndVerify();
 	}
 
-	private void executeAndVerify() throws URISyntaxException {
-		this.restTemplate.getForObject(new URI("/person/1"), Person.class);
+	private void executeAndVerify() {
+		this.restClient.get().uri("/person/1").accept(MediaType.APPLICATION_JSON).retrieve().body(Person.class);
 		this.mockServer.verify();
 	}
 

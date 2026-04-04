@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 package org.springframework.test.web.servlet.setup;
 
-import javax.servlet.http.HttpSession;
-
+import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.stereotype.Controller;
@@ -35,10 +34,10 @@ import static org.springframework.test.web.servlet.setup.SharedHttpSessionConfig
  *
  * @author Rossen Stoyanchev
  */
-public class SharedHttpSessionTests {
+class SharedHttpSessionTests {
 
 	@Test
-	public void httpSession() throws Exception {
+	void httpSession() throws Exception {
 		MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
 				.apply(sharedHttpSession())
 				.build();
@@ -62,7 +61,7 @@ public class SharedHttpSessionTests {
 	}
 
 	@Test
-	public void noHttpSession() throws Exception {
+	void noHttpSession() throws Exception {
 		MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
 				.apply(sharedHttpSession())
 				.build();

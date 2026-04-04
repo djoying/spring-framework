@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,11 @@ import java.lang.annotation.Target;
  *
  * <p>Note that the scope of execution to be repeated includes execution of the
  * test method itself as well as any <em>set up</em> or <em>tear down</em> of
- * the test fixture.
+ * the test fixture. When used with the
+ * {@link org.springframework.test.context.junit4.rules.SpringMethodRule
+ * SpringMethodRule}, the scope additionally includes
+ * {@linkplain org.springframework.test.context.TestExecutionListener#prepareTestInstance
+ * preparation of the test instance}.
  *
  * <p>This annotation may be used as a <em>meta-annotation</em> to create custom
  * <em>composed annotations</em>.
@@ -40,10 +44,14 @@ import java.lang.annotation.Target;
  * @see org.springframework.test.context.junit4.SpringJUnit4ClassRunner
  * @see org.springframework.test.context.junit4.rules.SpringMethodRule
  * @see org.springframework.test.context.junit4.statements.SpringRepeat
+ * @deprecated since Spring Framework 7.0 in favor of the
+ * {@link org.springframework.test.context.junit.jupiter.SpringExtension SpringExtension}
+ * and JUnit Jupiter
  */
 @Target({ElementType.METHOD, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+@Deprecated(since = "7.0")
 public @interface Repeat {
 
 	/**

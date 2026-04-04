@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 package org.springframework.test.web.servlet.samples.client.standalone.resultmatches;
 
-import java.nio.charset.StandardCharsets;
-
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.MediaType;
@@ -27,8 +26,11 @@ import org.springframework.test.web.servlet.client.MockMvcWebTestClient;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.springframework.http.MediaType.TEXT_PLAIN;
 
 /**
  * {@link MockMvcWebTestClient} equivalent of the MockMvc
@@ -36,20 +38,20 @@ import static org.hamcrest.Matchers.equalTo;
  *
  * @author Rossen Stoyanchev
  */
-public class ContentAssertionTests {
+class ContentAssertionTests {
 
 	private final WebTestClient testClient =
 			MockMvcWebTestClient.bindToController(new SimpleController()).build();
 
 	@Test
-	public void testContentType() {
-		testClient.get().uri("/handle").accept(MediaType.TEXT_PLAIN)
+	void contentType() {
+		testClient.get().uri("/handle").accept(TEXT_PLAIN)
 				.exchange()
 				.expectStatus().isOk()
 				.expectHeader().contentType(MediaType.valueOf("text/plain;charset=ISO-8859-1"))
 				.expectHeader().contentType("text/plain;charset=ISO-8859-1")
 				.expectHeader().contentTypeCompatibleWith("text/plain")
-				.expectHeader().contentTypeCompatibleWith(MediaType.TEXT_PLAIN);
+				.expectHeader().contentTypeCompatibleWith(TEXT_PLAIN);
 
 		testClient.get().uri("/handleUtf8")
 				.exchange()
@@ -57,88 +59,86 @@ public class ContentAssertionTests {
 				.expectHeader().contentType(MediaType.valueOf("text/plain;charset=UTF-8"))
 				.expectHeader().contentType("text/plain;charset=UTF-8")
 				.expectHeader().contentTypeCompatibleWith("text/plain")
-				.expectHeader().contentTypeCompatibleWith(MediaType.TEXT_PLAIN);
+				.expectHeader().contentTypeCompatibleWith(TEXT_PLAIN);
 	}
 
 	@Test
-	public void testContentAsString() {
-
-		testClient.get().uri("/handle").accept(MediaType.TEXT_PLAIN)
+	void contentAsString() {
+		testClient.get().uri("/handle").accept(TEXT_PLAIN)
 				.exchange()
 				.expectStatus().isOk()
 				.expectBody(String.class).isEqualTo("Hello world!");
 
-		testClient.get().uri("/handleUtf8").accept(MediaType.TEXT_PLAIN)
+		testClient.get().uri("/handleUtf8").accept(TEXT_PLAIN)
 				.exchange()
 				.expectStatus().isOk()
 				.expectBody(String.class).isEqualTo("\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01");
 
 		// Hamcrest matchers...
-		testClient.get().uri("/handle").accept(MediaType.TEXT_PLAIN)
+		testClient.get().uri("/handle").accept(TEXT_PLAIN)
 				.exchange()
 				.expectStatus().isOk()
-				.expectBody(String.class).value(equalTo("Hello world!"));
+				.expectBody(String.class).value(v -> MatcherAssert.assertThat(v, equalTo("Hello world!")));
 		testClient.get().uri("/handleUtf8")
 				.exchange()
 				.expectStatus().isOk()
-				.expectBody(String.class).value(equalTo("\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01"));
+				.expectBody(String.class).value(v ->
+						MatcherAssert.assertThat(v, equalTo("\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01")));
 	}
 
 	@Test
-	public void testContentAsBytes() {
-
-		testClient.get().uri("/handle").accept(MediaType.TEXT_PLAIN)
+	void contentAsBytes() {
+		testClient.get().uri("/handle").accept(TEXT_PLAIN)
 				.exchange()
 				.expectStatus().isOk()
 				.expectBody(byte[].class).isEqualTo(
-				"Hello world!".getBytes(StandardCharsets.ISO_8859_1));
+				"Hello world!".getBytes(ISO_8859_1));
 
 		testClient.get().uri("/handleUtf8")
 				.exchange()
 				.expectStatus().isOk()
 				.expectBody(byte[].class).isEqualTo(
-				"\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01".getBytes(StandardCharsets.UTF_8));
+				"\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01".getBytes(UTF_8));
 	}
 
 	@Test
-	public void testContentStringMatcher() {
-		testClient.get().uri("/handle").accept(MediaType.TEXT_PLAIN)
+	void contentStringMatcher() {
+		testClient.get().uri("/handle").accept(TEXT_PLAIN)
 				.exchange()
 				.expectStatus().isOk()
-				.expectBody(String.class).value(containsString("world"));
+				.expectBody(String.class).value(v -> MatcherAssert.assertThat(v, containsString("world")));
 	}
 
 	@Test
-	public void testCharacterEncoding() {
-
-		testClient.get().uri("/handle").accept(MediaType.TEXT_PLAIN)
+	void characterEncoding() {
+		testClient.get().uri("/handle").accept(TEXT_PLAIN)
 				.exchange()
 				.expectStatus().isOk()
 				.expectHeader().contentType("text/plain;charset=ISO-8859-1")
-				.expectBody(String.class).value(containsString("world"));
+				.expectBody(String.class).value(v -> MatcherAssert.assertThat(v, containsString("world")));
 
 		testClient.get().uri("/handleUtf8")
 				.exchange()
 				.expectStatus().isOk()
 				.expectHeader().contentType("text/plain;charset=UTF-8")
 				.expectBody(byte[].class)
-				.isEqualTo("\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01".getBytes(StandardCharsets.UTF_8));
+				.isEqualTo("\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01".getBytes(UTF_8));
 	}
 
 
 	@Controller
 	private static class SimpleController {
 
-		@RequestMapping(value="/handle", produces="text/plain")
+		@RequestMapping(path="/handle", produces="text/plain")
 		@ResponseBody
-		public String handle() {
+		String handle() {
 			return "Hello world!";
 		}
 
-		@RequestMapping(value="/handleUtf8", produces="text/plain;charset=UTF-8")
+		@RequestMapping(path="/handleUtf8", produces="text/plain;charset=UTF-8")
 		@ResponseBody
-		public String handleWithCharset() {
-			return "\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01";	// "Hello world! (Japanese)
+		String handleWithCharset() {
+			return "\u3053\u3093\u306b\u3061\u306f\u4e16\u754c\uff01";	// "Hello world!" (Japanese)
 		}
 	}
 

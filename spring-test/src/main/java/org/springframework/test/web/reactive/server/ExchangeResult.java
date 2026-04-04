@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,22 +20,23 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.http.client.reactive.ClientHttpResponse;
-import org.springframework.lang.Nullable;
+import org.springframework.test.json.JsonConverterDelegate;
 import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 
@@ -44,22 +45,23 @@ import org.springframework.util.MultiValueMap;
  * {@link WebTestClient}.
  *
  * <p>Note that a decoded response body is not exposed at this level since the
- * body may not have been decoded and consumed yet. Sub-types
+ * body may not have been decoded and consumed yet. Subtypes
  * {@link EntityExchangeResult} and {@link FluxExchangeResult} provide access
  * to a decoded response entity and a decoded (but not consumed) response body
  * respectively.
  *
  * @author Rossen Stoyanchev
+ * @author Sam Brannen
  * @since 5.0
  * @see EntityExchangeResult
  * @see FluxExchangeResult
  */
 public class ExchangeResult {
 
-	private static Log logger = LogFactory.getLog(ExchangeResult.class);
+	private static final Log logger = LogFactory.getLog(ExchangeResult.class);
 
-	private static final List<MediaType> PRINTABLE_MEDIA_TYPES = Arrays.asList(
-			MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML,
+	private static final List<MediaType> PRINTABLE_MEDIA_TYPES = List.of(
+			MediaType.parseMediaType("application/*+json"), MediaType.APPLICATION_XML,
 			MediaType.parseMediaType("text/*"), MediaType.APPLICATION_FORM_URLENCODED);
 
 
@@ -73,11 +75,14 @@ public class ExchangeResult {
 
 	private final Duration timeout;
 
-	@Nullable
-	private final String uriTemplate;
+	private final @Nullable String uriTemplate;
 
-	@Nullable
-	final Object mockServerResult;
+	private final @Nullable Object mockServerResult;
+
+	private final @Nullable JsonConverterDelegate converterDelegate;
+
+	/** Ensure single logging, for example, for expectAll. */
+	private boolean diagnosticsLogged;
 
 
 	/**
@@ -91,10 +96,11 @@ public class ExchangeResult {
 	 * @param timeout how long to wait for content to materialize
 	 * @param uriTemplate the URI template used to set up the request, if any
 	 * @param serverResult the result of a mock server exchange if applicable.
+	 * @param converterDelegate for JSON decoding in AssertJ support
 	 */
 	ExchangeResult(ClientHttpRequest request, ClientHttpResponse response,
 			Mono<byte[]> requestBody, Mono<byte[]> responseBody, Duration timeout, @Nullable String uriTemplate,
-			@Nullable Object serverResult) {
+			@Nullable Object serverResult, @Nullable JsonConverterDelegate converterDelegate) {
 
 		Assert.notNull(request, "ClientHttpRequest is required");
 		Assert.notNull(response, "ClientHttpResponse is required");
@@ -108,6 +114,7 @@ public class ExchangeResult {
 		this.timeout = timeout;
 		this.uriTemplate = uriTemplate;
 		this.mockServerResult = serverResult;
+		this.converterDelegate = converterDelegate;
 	}
 
 	/**
@@ -121,6 +128,8 @@ public class ExchangeResult {
 		this.timeout = other.timeout;
 		this.uriTemplate = other.uriTemplate;
 		this.mockServerResult = other.mockServerResult;
+		this.converterDelegate = other.converterDelegate;
+		this.diagnosticsLogged = other.diagnosticsLogged;
 	}
 
 
@@ -141,8 +150,7 @@ public class ExchangeResult {
 	/**
 	 * Return the original URI template used to prepare the request, if any.
 	 */
-	@Nullable
-	public String getUriTemplate() {
+	public @Nullable String getUriTemplate() {
 		return this.uriTemplate;
 	}
 
@@ -157,28 +165,17 @@ public class ExchangeResult {
 	 * Return the raw request body content written through the request.
 	 * <p><strong>Note:</strong> If the request content has not been consumed
 	 * for any reason yet, use of this method will trigger consumption.
-	 * @throws IllegalStateException if the request body is not been fully written.
+	 * @throws IllegalStateException if the request body has not been fully written.
 	 */
-	@Nullable
-	public byte[] getRequestBodyContent() {
+	public byte @Nullable [] getRequestBodyContent() {
 		return this.requestBody.block(this.timeout);
 	}
 
-
 	/**
-	 * Return the HTTP status code as an {@link HttpStatus} enum value.
+	 * Return the HTTP status code as an {@link HttpStatusCode} value.
 	 */
-	public HttpStatus getStatus() {
+	public HttpStatusCode getStatus() {
 		return this.response.getStatusCode();
-	}
-
-	/**
-	 * Return the HTTP status code (potentially non-standard and not resolvable
-	 * through the {@link HttpStatus} enum) as an integer.
-	 * @since 5.1.10
-	 */
-	public int getRawStatusCode() {
-		return this.response.getRawStatusCode();
 	}
 
 	/**
@@ -199,10 +196,9 @@ public class ExchangeResult {
 	 * Return the raw request body content written to the response.
 	 * <p><strong>Note:</strong> If the response content has not been consumed
 	 * yet, use of this method will trigger consumption.
-	 * @throws IllegalStateException if the response is not been fully read.
+	 * @throws IllegalStateException if the response has not been fully read.
 	 */
-	@Nullable
-	public byte[] getResponseBodyContent() {
+	public byte @Nullable [] getResponseBodyContent() {
 		return this.responseBody.block(this.timeout);
 	}
 
@@ -212,22 +208,31 @@ public class ExchangeResult {
 	 * @since 5.3
 	 * @see org.springframework.test.web.servlet.client.MockMvcWebTestClient#resultActionsFor(ExchangeResult)
 	 */
-	@Nullable
-	public Object getMockServerResult() {
+	public @Nullable Object getMockServerResult() {
 		return this.mockServerResult;
 	}
 
 	/**
-	 * Execute the given Runnable, catch any {@link AssertionError}, decorate
-	 * with {@code AssertionError} containing diagnostic information about the
-	 * request and response, and then re-throw.
+	 * Return a {@link JsonConverterDelegate} based on the configured codecs.
+	 * Mainly for internal use from AssertJ support classes.
+	 * @since 7.0
+	 */
+	public @Nullable JsonConverterDelegate getJsonConverterDelegate() {
+		return this.converterDelegate;
+	}
+
+	/**
+	 * Execute the given Runnable, catch any {@link AssertionError}, log details
+	 * about the request and response at ERROR level under the class log
+	 * category, and after that re-throw the error.
 	 */
 	public void assertWithDiagnostics(Runnable assertion) {
 		try {
 			assertion.run();
 		}
 		catch (AssertionError ex) {
-			if (logger.isErrorEnabled()) {
+			if (!this.diagnosticsLogged && logger.isErrorEnabled()) {
+				this.diagnosticsLogged = true;
 				logger.error("Request details for assertion failure:\n" + this);
 			}
 			throw ex;
@@ -243,21 +248,28 @@ public class ExchangeResult {
 				"\n" +
 				formatBody(getRequestHeaders().getContentType(), this.requestBody) + "\n" +
 				"\n" +
-				"< " + getStatus() + " " + getStatus().getReasonPhrase() + "\n" +
+				"< " + formatStatus(getStatus()) + "\n" +
 				"< " + formatHeaders(getResponseHeaders(), "\n< ") + "\n" +
 				"\n" +
 				formatBody(getResponseHeaders().getContentType(), this.responseBody) +"\n" +
 				formatMockServerResult();
 	}
 
+	private String formatStatus(HttpStatusCode statusCode) {
+		String result = statusCode.toString();
+		if (statusCode instanceof HttpStatus status) {
+			result += " " + status.getReasonPhrase();
+		}
+		return result;
+	}
+
 	private String formatHeaders(HttpHeaders headers, String delimiter) {
-		return headers.entrySet().stream()
+		return headers.headerSet().stream()
 				.map(entry -> entry.getKey() + ": " + entry.getValue())
 				.collect(Collectors.joining(delimiter));
 	}
 
-	@Nullable
-	private String formatBody(@Nullable MediaType contentType, Mono<byte[]> body) {
+	private @Nullable String formatBody(@Nullable MediaType contentType, Mono<byte[]> body) {
 		return body
 				.map(bytes -> {
 					if (contentType == null) {

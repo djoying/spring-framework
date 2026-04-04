@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@ package org.springframework.test.web.servlet.samples.standalone.resulthandlers;
 
 import java.io.StringWriter;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletResponse;
-
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -49,13 +48,13 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  * @see org.springframework.test.web.servlet.result.PrintingResultHandlerTests
  */
 @Disabled
-public class PrintingResultHandlerSmokeTests {
+class PrintingResultHandlerSmokeTests {
 
 	// Not intended to be executed with the build.
 	// Comment out class-level @Disabled to see the output.
 
 	@Test
-	public void testPrint() throws Exception {
+	void printToVariousOutputs() throws Exception {
 		StringWriter writer = new StringWriter();
 
 		standaloneSetup(new SimpleController())
@@ -69,7 +68,7 @@ public class PrintingResultHandlerSmokeTests {
 
 		System.out.println();
 		System.out.println("===============================================================");
-		System.out.println(writer.toString());
+		System.out.println(writer);
 	}
 
 
@@ -83,4 +82,5 @@ public class PrintingResultHandlerSmokeTests {
 			return "Hello Response";
 		}
 	}
+
 }

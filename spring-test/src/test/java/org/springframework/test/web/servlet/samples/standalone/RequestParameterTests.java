@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.test.web.servlet.samples.standalone;
 
 import org.junit.jupiter.api.Test;
@@ -35,11 +36,10 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  *
  * @author Rossen Stoyanchev
  */
-public class RequestParameterTests {
+class RequestParameterTests {
 
 	@Test
-	public void queryParameter() throws Exception {
-
+	void queryParameter() throws Exception {
 		standaloneSetup(new PersonController()).build()
 			.perform(get("/search?name=George").accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk())
@@ -49,13 +49,12 @@ public class RequestParameterTests {
 
 
 	@Controller
-	private class PersonController {
+	private static class PersonController {
 
 		@RequestMapping(value="/search")
 		@ResponseBody
 		public Person get(@RequestParam String name) {
-			Person person = new Person(name);
-			return person;
+			return new Person(name);
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,9 @@ package org.springframework.orm.jpa;
 import java.lang.reflect.Proxy;
 import java.util.List;
 
-import javax.persistence.EntityManager;
-import javax.persistence.Query;
-import javax.persistence.TransactionRequiredException;
-
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
+import jakarta.persistence.TransactionRequiredException;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.orm.jpa.domain.Person;
@@ -38,11 +37,11 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Juergen Hoeller
  * @since 2.0
  */
-public class ApplicationManagedEntityManagerIntegrationTests extends AbstractEntityManagerFactoryIntegrationTests {
+class ApplicationManagedEntityManagerIntegrationTests extends AbstractEntityManagerFactoryIntegrationTests {
 
 	@Test
 	@SuppressWarnings("unchecked")
-	public void testEntityManagerProxyIsProxy() {
+	void entityManagerProxyIsProxy() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		assertThat(Proxy.isProxyClass(em.getClass())).isTrue();
 		Query q = em.createQuery("select p from Person as p");
@@ -55,20 +54,20 @@ public class ApplicationManagedEntityManagerIntegrationTests extends AbstractEnt
 	}
 
 	@Test
-	public void testEntityManagerProxyAcceptsProgrammaticTxJoining() {
+	void entityManagerProxyAcceptsProgrammaticTxJoining() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		em.joinTransaction();
 	}
 
 	@Test
-	public void testInstantiateAndSave() {
+	void instantiateAndSave() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		em.joinTransaction();
 		doInstantiateAndSave(em);
 	}
 
 	@Test
-	public void testCannotFlushWithoutGettingTransaction() {
+	void cannotFlushWithoutGettingTransaction() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		assertThatExceptionOfType(TransactionRequiredException.class).isThrownBy(() ->
 				doInstantiateAndSave(em));
@@ -81,8 +80,8 @@ public class ApplicationManagedEntityManagerIntegrationTests extends AbstractEnt
 		setComplete();
 	}
 
-	protected void doInstantiateAndSave(EntityManager em) {
-		testStateClean();
+	void doInstantiateAndSave(EntityManager em) {
+		stateClean();
 		Person p = new Person();
 
 		p.setFirstName("Tony");
@@ -94,12 +93,12 @@ public class ApplicationManagedEntityManagerIntegrationTests extends AbstractEnt
 	}
 
 	@Test
-	public void testStateClean() {
+	void stateClean() {
 		assertThat(countRowsInTable("person")).as("Should be no people from previous transactions").isEqualTo(0);
 	}
 
 	@Test
-	public void testReuseInNewTransaction() {
+	void reuseInNewTransaction() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		em.joinTransaction();
 
@@ -119,7 +118,7 @@ public class ApplicationManagedEntityManagerIntegrationTests extends AbstractEnt
 
 		doInstantiateAndSave(em);
 		setComplete();
-		endTransaction();	// Should rollback
+		endTransaction();	// Should roll back
 		assertThat(countRowsInTable(em, "person")).as("Tx must have committed back").isEqualTo(1);
 
 		// Now clean up the database
@@ -135,22 +134,22 @@ public class ApplicationManagedEntityManagerIntegrationTests extends AbstractEnt
 	}
 
 	@Test
-	public void testRollbackOccurs() {
+	void rollbackOccurs() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		em.joinTransaction();
 		doInstantiateAndSave(em);
-		endTransaction();	// Should rollback
+		endTransaction();	// Should roll back
 		assertThat(countRowsInTable(em, "person")).as("Tx must have been rolled back").isEqualTo(0);
 	}
 
 	@Test
-	public void testCommitOccurs() {
+	void commitOccurs() {
 		EntityManager em = entityManagerFactory.createEntityManager();
 		em.joinTransaction();
 		doInstantiateAndSave(em);
 
 		setComplete();
-		endTransaction();	// Should rollback
+		endTransaction();	// Should roll back
 		assertThat(countRowsInTable(em, "person")).as("Tx must have committed back").isEqualTo(1);
 
 		// Now clean up the database

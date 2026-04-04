@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,20 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import javax.transaction.InvalidTransactionException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.SystemException;
-import javax.transaction.Transaction;
-import javax.transaction.TransactionManager;
-import javax.transaction.UserTransaction;
+import jakarta.transaction.InvalidTransactionException;
+import jakarta.transaction.NotSupportedException;
+import jakarta.transaction.SystemException;
+import jakarta.transaction.Transaction;
+import jakarta.transaction.TransactionManager;
+import jakarta.transaction.UserTransaction;
+import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Nullable;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionSystemException;
 import org.springframework.util.Assert;
 
 /**
- * Special {@link JtaTransactionManager} variant for BEA WebLogic (9.0 and higher).
+ * Special {@link JtaTransactionManager} variant for Oracle WebLogic 15.1.1 and higher.
  * Supports the full power of Spring's transaction definitions on WebLogic's
  * transaction coordinator, <i>beyond standard JTA</i>: transaction names,
  * per-transaction isolation levels, and proper resuming of transactions in all cases.
@@ -59,19 +59,15 @@ import org.springframework.util.Assert;
  * "transactionManager"/"transactionManagerName", passing in existing handles
  * or specifying corresponding JNDI locations to look up.
  *
- * <p><b>NOTE: This JtaTransactionManager is intended to refine specific transaction
- * demarcation behavior on Spring's side. It will happily co-exist with independently
- * configured WebLogic transaction strategies in your persistence provider, with no
- * need to specifically connect those setups in any way.</b>
+ * <p>Note: This class was initially removed as of Spring Framework 6.0 but then
+ * brought back after the WebLogic 15.1.1 release which finally delivers Jakarta EE 9
+ * compatibility. As of Spring Framework 6.2.16, it is available again for manual
+ * configuration - as a replacement for the standard {@link JtaTransactionManager}.
  *
  * @author Juergen Hoeller
- * @since 1.1
- * @see org.springframework.transaction.TransactionDefinition#getName
- * @see org.springframework.transaction.TransactionDefinition#getIsolationLevel
- * @see weblogic.transaction.UserTransaction#begin(String)
- * @see weblogic.transaction.Transaction#setProperty
- * @see weblogic.transaction.TransactionManager#forceResume
- * @see weblogic.transaction.TransactionHelper
+ * @since 6.2.16
+ * @see org.springframework.transaction.TransactionDefinition#getName()
+ * @see org.springframework.transaction.TransactionDefinition#getIsolationLevel()
  */
 @SuppressWarnings("serial")
 public class WebLogicJtaTransactionManager extends JtaTransactionManager {
@@ -89,22 +85,17 @@ public class WebLogicJtaTransactionManager extends JtaTransactionManager {
 
 	private boolean weblogicUserTransactionAvailable;
 
-	@Nullable
-	private Method beginWithNameMethod;
+	private @Nullable Method beginWithNameMethod;
 
-	@Nullable
-	private Method beginWithNameAndTimeoutMethod;
+	private @Nullable Method beginWithNameAndTimeoutMethod;
 
 	private boolean weblogicTransactionManagerAvailable;
 
-	@Nullable
-	private Method forceResumeMethod;
+	private @Nullable Method forceResumeMethod;
 
-	@Nullable
-	private Method setPropertyMethod;
+	private @Nullable Method setPropertyMethod;
 
-	@Nullable
-	private Object transactionHelper;
+	private @Nullable Object transactionHelper;
 
 
 	@Override
@@ -114,8 +105,7 @@ public class WebLogicJtaTransactionManager extends JtaTransactionManager {
 	}
 
 	@Override
-	@Nullable
-	protected UserTransaction retrieveUserTransaction() throws TransactionSystemException {
+	protected @Nullable UserTransaction retrieveUserTransaction() throws TransactionSystemException {
 		Object helper = loadWebLogicTransactionHelper();
 		try {
 			logger.trace("Retrieving JTA UserTransaction from WebLogic TransactionHelper");
@@ -133,8 +123,7 @@ public class WebLogicJtaTransactionManager extends JtaTransactionManager {
 	}
 
 	@Override
-	@Nullable
-	protected TransactionManager retrieveTransactionManager() throws TransactionSystemException {
+	protected @Nullable TransactionManager retrieveTransactionManager() throws TransactionSystemException {
 		Object helper = loadWebLogicTransactionHelper();
 		try {
 			logger.trace("Retrieving JTA TransactionManager from WebLogic TransactionHelper");

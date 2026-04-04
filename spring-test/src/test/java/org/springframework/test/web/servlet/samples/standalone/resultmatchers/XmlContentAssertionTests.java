@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,16 @@ package org.springframework.test.web.servlet.samples.standalone.resultmatchers;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
-import javax.xml.bind.annotation.XmlRootElement;
-
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlElementWrapper;
+import jakarta.xml.bind.annotation.XmlRootElement;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.web.Person;
 import org.springframework.test.web.servlet.MockMvc;
@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
  * @see ContentAssertionTests
  * @see XpathAssertionTests
  */
-public class XmlContentAssertionTests {
+class XmlContentAssertionTests {
 
 	private static final String PEOPLE_XML =
 		"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
@@ -64,8 +64,9 @@ public class XmlContentAssertionTests {
 
 
 	@BeforeEach
-	public void setup() {
+	void setup() {
 		this.mockMvc = standaloneSetup(new MusicController())
+				.setMessageConverters(new Jaxb2RootElementHttpMessageConverter())
 				.defaultRequest(get("/").accept(MediaType.APPLICATION_XML, MediaType.parseMediaType("application/xml;charset=UTF-8")))
 				.alwaysExpect(status().isOk())
 				.alwaysExpect(content().contentType(MediaType.parseMediaType("application/xml;charset=UTF-8")))
@@ -73,12 +74,12 @@ public class XmlContentAssertionTests {
 	}
 
 	@Test
-	public void testXmlEqualTo() throws Exception {
+	void xmlEqualTo() throws Exception {
 		this.mockMvc.perform(get("/music/people")).andExpect(content().xml(PEOPLE_XML));
 	}
 
 	@Test
-	public void testNodeHamcrestMatcher() throws Exception {
+	void nodeHamcrestMatcher() throws Exception {
 		this.mockMvc.perform(get("/music/people"))
 			.andExpect(content().node(hasXPath("/people/composers/composer[1]")));
 	}
@@ -88,7 +89,8 @@ public class XmlContentAssertionTests {
 	private static class MusicController {
 
 		@RequestMapping(value="/music/people")
-		public @ResponseBody PeopleWrapper getPeople() {
+		@ResponseBody
+		public PeopleWrapper getPeople() {
 
 			List<Person> composers = Arrays.asList(
 					new Person("Johann Sebastian Bach").setSomeDouble(21),

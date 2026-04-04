@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,19 +18,20 @@ package org.springframework.web.servlet.mvc.method.annotation;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.servlet.MultipartConfigElement;
-
+import jakarta.servlet.MultipartConfigElement;
+import org.eclipse.jetty.ee11.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.NetworkConnector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,25 +44,24 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
+import org.springframework.http.converter.multipart.MultipartHttpMessageConverter;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.FileSystemUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartResolver;
-import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -77,34 +77,29 @@ import static org.springframework.web.bind.annotation.RequestMethod.POST;
  * @author Brian Clozel
  * @author Sam Brannen
  */
-public class RequestPartIntegrationTests {
-
-	private RestTemplate restTemplate;
+class RequestPartIntegrationTests {
 
 	private static Server server;
 
 	private static String baseUrl;
 
+	private static Path tempDirectory;
+
+	private RestClient restClient;
 
 	@BeforeAll
-	public static void startServer() throws Exception {
+	static void startServer() throws Exception {
 		// Let server pick its own random, available port.
 		server = new Server(0);
 
+		tempDirectory = Files.createTempDirectory("RequestPartIntegrationTests");
+
 		ServletContextHandler handler = new ServletContextHandler();
 		handler.setContextPath("/");
-
-		Class<?> config = CommonsMultipartResolverTestConfig.class;
-		ServletHolder commonsResolverServlet = new ServletHolder(DispatcherServlet.class);
-		commonsResolverServlet.setInitParameter("contextConfigLocation", config.getName());
-		commonsResolverServlet.setInitParameter("contextClass", AnnotationConfigWebApplicationContext.class.getName());
-		handler.addServlet(commonsResolverServlet, "/commons-resolver/*");
-
-		config = StandardMultipartResolverTestConfig.class;
 		ServletHolder standardResolverServlet = new ServletHolder(DispatcherServlet.class);
-		standardResolverServlet.setInitParameter("contextConfigLocation", config.getName());
+		standardResolverServlet.setInitParameter("contextConfigLocation", StandardMultipartResolverTestConfig.class.getName());
 		standardResolverServlet.setInitParameter("contextClass", AnnotationConfigWebApplicationContext.class.getName());
-		standardResolverServlet.getRegistration().setMultipartConfig(new MultipartConfigElement(""));
+		standardResolverServlet.getRegistration().setMultipartConfig(new MultipartConfigElement(tempDirectory.toString()));
 		handler.addServlet(standardResolverServlet, "/standard-resolver/*");
 
 		server.setHandler(handler);
@@ -116,14 +111,19 @@ public class RequestPartIntegrationTests {
 	}
 
 	@AfterAll
-	public static void stopServer() throws Exception {
-		if (server != null) {
-			server.stop();
+	static void stopServer() throws Exception {
+		try {
+			if (server != null) {
+				server.stop();
+			}
+		}
+		finally {
+			FileSystemUtils.deleteRecursively(tempDirectory);
 		}
 	}
 
 	@BeforeEach
-	public void setup() {
+	void setup() {
 		ByteArrayHttpMessageConverter emptyBodyConverter = new ByteArrayHttpMessageConverter();
 		emptyBodyConverter.setSupportedMediaTypes(Collections.singletonList(MediaType.APPLICATION_JSON));
 
@@ -131,53 +131,50 @@ public class RequestPartIntegrationTests {
 		converters.add(emptyBodyConverter);
 		converters.add(new ByteArrayHttpMessageConverter());
 		converters.add(new ResourceHttpMessageConverter());
-		converters.add(new MappingJackson2HttpMessageConverter());
+		converters.add(new JacksonJsonHttpMessageConverter());
 
-		AllEncompassingFormHttpMessageConverter converter = new AllEncompassingFormHttpMessageConverter();
-		converter.setPartConverters(converters);
+		MultipartHttpMessageConverter converter = new MultipartHttpMessageConverter(converters);
 
-		restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
-		restTemplate.setMessageConverters(Collections.singletonList(converter));
+		this.restClient = RestClient.builder().baseUrl(baseUrl)
+				.requestFactory(new HttpComponentsClientHttpRequestFactory())
+				.configureMessageConverters(clientBuilder -> clientBuilder.addCustomConverter(converter))
+				.build();
 	}
 
 
 	@Test
-	public void commonsMultipartResolver() throws Exception {
-		testCreate(baseUrl + "/commons-resolver/test", "Jason");
-		testCreate(baseUrl + "/commons-resolver/test", "Arjen");
-	}
-
-	@Test
-	public void standardMultipartResolver() throws Exception {
+	void standardMultipartResolver() {
 		testCreate(baseUrl + "/standard-resolver/test", "Jason");
 		testCreate(baseUrl + "/standard-resolver/test", "Arjen");
 	}
 
 	@Test  // SPR-13319
-	public void standardMultipartResolverWithEncodedFileName() throws Exception {
-		byte[] boundary = MimeTypeUtils.generateMultipartBoundary();
-		String boundaryText = new String(boundary, "US-ASCII");
+	void standardMultipartResolverWithEncodedFileName() {
+		String boundaryText = MimeTypeUtils.generateMultipartBoundaryString();
 		Map<String, String> params = Collections.singletonMap("boundary", boundaryText);
 
 		String content =
-				"--" + boundaryText + "\n" +
-				"Content-Disposition: form-data; name=\"file\"; filename*=\"utf-8''%C3%A9l%C3%A8ve.txt\"\n" +
-				"Content-Type: text/plain\n" +
-				"Content-Length: 7\n" +
-				"\n" +
-				"content\n" +
-				"--" + boundaryText + "--";
+				"--" + boundaryText + "\r\n" +
+				"Content-Disposition: form-data; name=\"file\"; filename*=\"utf-8''%C3%A9l%C3%A8ve.txt\"\r\n" +
+				"Content-Type: text/plain\r\n" +
+				"Content-Length: 7\r\n" +
+				"\r\n" +
+				"content\r\n" +
+				"--" + boundaryText + "--\r\n ";
 
-		RequestEntity<byte[]> requestEntity =
-				RequestEntity.post(new URI(baseUrl + "/standard-resolver/spr13319"))
-						.contentType(new MediaType(MediaType.MULTIPART_FORM_DATA, params))
-						.body(content.getBytes(StandardCharsets.US_ASCII));
+		ByteArrayHttpMessageConverter byteArrayConverter = new ByteArrayHttpMessageConverter();
+		byteArrayConverter.setSupportedMediaTypes(Collections.singletonList(MediaType.MULTIPART_FORM_DATA));
+		this.restClient = RestClient.builder().baseUrl(baseUrl)
+				.requestFactory(new HttpComponentsClientHttpRequestFactory())
+				.configureMessageConverters(clientBuilder -> clientBuilder.addCustomConverter(byteArrayConverter))
+				.build();
 
-		ByteArrayHttpMessageConverter converter = new ByteArrayHttpMessageConverter();
-		converter.setSupportedMediaTypes(Collections.singletonList(MediaType.MULTIPART_FORM_DATA));
-		this.restTemplate.setMessageConverters(Collections.singletonList(converter));
+		ResponseEntity<Void> responseEntity = this.restClient.post().uri("/standard-resolver/spr13319")
+				.contentType(new MediaType(MediaType.MULTIPART_FORM_DATA, params))
+				.body(content.getBytes(StandardCharsets.US_ASCII))
+				.retrieve()
+				.toBodilessEntity();
 
-		ResponseEntity<Void> responseEntity = restTemplate.exchange(requestEntity, Void.class);
 		assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
@@ -191,8 +188,9 @@ public class RequestPartIntegrationTests {
 		headers.setContentType(new MediaType("application", "octet-stream", StandardCharsets.ISO_8859_1));
 		parts.add("iso-8859-1-data", new HttpEntity<>(new byte[] {(byte) 0xC4}, headers)); // SPR-13096
 
-		URI location = restTemplate.postForLocation(url, parts);
-		assertThat(location.toString()).isEqualTo(("http://localhost:8080/test/" + basename + "/logo.jpg"));
+		ResponseEntity<Void> response = this.restClient.post().uri(url).contentType(MediaType.MULTIPART_FORM_DATA)
+				.body(parts).retrieve().toBodilessEntity();
+		assertThat(response.getHeaders().getLocation().toString()).isEqualTo(("http://localhost:8080/test/" + basename + "/logo.jpg"));
 	}
 
 
@@ -203,17 +201,6 @@ public class RequestPartIntegrationTests {
 		@Bean
 		public RequestPartTestController controller() {
 			return new RequestPartTestController();
-		}
-	}
-
-
-	@Configuration
-	@SuppressWarnings("unused")
-	static class CommonsMultipartResolverTestConfig extends RequestPartTestConfig {
-
-		@Bean
-		public MultipartResolver multipartResolver() {
-			return new CommonsMultipartResolver();
 		}
 	}
 
@@ -261,7 +248,6 @@ public class RequestPartIntegrationTests {
 		private String name;
 
 		public TestData() {
-			super();
 		}
 
 		public TestData(String name) {

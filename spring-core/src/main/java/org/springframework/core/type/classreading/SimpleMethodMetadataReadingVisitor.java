@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,30 +20,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.asm.AnnotationVisitor;
 import org.springframework.asm.MethodVisitor;
+import org.springframework.asm.Opcodes;
 import org.springframework.asm.SpringAsmInfo;
 import org.springframework.asm.Type;
 import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.annotation.MergedAnnotations;
-import org.springframework.lang.Nullable;
 
 /**
  * ASM method visitor that creates {@link SimpleMethodMetadata}.
  *
  * @author Phillip Webb
+ * @author Sam Brannen
+ * @author Juergen Hoeller
  * @since 5.2
  */
 final class SimpleMethodMetadataReadingVisitor extends MethodVisitor {
 
-	@Nullable
-	private final ClassLoader classLoader;
+	private final @Nullable ClassLoader classLoader;
 
 	private final String declaringClassName;
 
 	private final int access;
 
-	private final String name;
+	private final String methodName;
 
 	private final String descriptor;
 
@@ -51,45 +54,41 @@ final class SimpleMethodMetadataReadingVisitor extends MethodVisitor {
 
 	private final Consumer<SimpleMethodMetadata> consumer;
 
-	@Nullable
-	private Source source;
+	private @Nullable Source source;
 
 
 	SimpleMethodMetadataReadingVisitor(@Nullable ClassLoader classLoader, String declaringClassName,
-			int access, String name, String descriptor, Consumer<SimpleMethodMetadata> consumer) {
+			int access, String methodName, String descriptor, Consumer<SimpleMethodMetadata> consumer) {
 
 		super(SpringAsmInfo.ASM_VERSION);
 		this.classLoader = classLoader;
 		this.declaringClassName = declaringClassName;
 		this.access = access;
-		this.name = name;
+		this.methodName = methodName;
 		this.descriptor = descriptor;
 		this.consumer = consumer;
 	}
 
 
 	@Override
-	@Nullable
-	public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
-		return MergedAnnotationReadingVisitor.get(this.classLoader, this::getSource,
+	public @Nullable AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+		return MergedAnnotationReadingVisitor.get(this.classLoader, getSource(),
 				descriptor, visible, this.annotations::add);
 	}
 
 	@Override
 	public void visitEnd() {
-		if (!this.annotations.isEmpty()) {
-			String returnTypeName = Type.getReturnType(this.descriptor).getClassName();
-			MergedAnnotations annotations = MergedAnnotations.of(this.annotations);
-			SimpleMethodMetadata metadata = new SimpleMethodMetadata(this.name,
-					this.access, this.declaringClassName, returnTypeName, annotations);
-			this.consumer.accept(metadata);
-		}
+		String returnTypeName = Type.getReturnType(this.descriptor).getClassName();
+		MergedAnnotations annotations = MergedAnnotations.of(this.annotations);
+		SimpleMethodMetadata metadata = new SimpleMethodMetadata(this.methodName, this.access,
+				this.declaringClassName, returnTypeName, getSource(), annotations);
+		this.consumer.accept(metadata);
 	}
 
 	private Object getSource() {
 		Source source = this.source;
 		if (source == null) {
-			source = new Source(this.declaringClassName, this.name, this.descriptor);
+			source = new Source(this.declaringClassName, this.methodName, this.access, this.descriptor);
 			this.source = source;
 		}
 		return source;
@@ -103,16 +102,18 @@ final class SimpleMethodMetadataReadingVisitor extends MethodVisitor {
 
 		private final String declaringClassName;
 
-		private final String name;
+		private final String methodName;
+
+		private final int access;
 
 		private final String descriptor;
 
-		@Nullable
-		private String toStringValue;
+		private @Nullable String toStringValue;
 
-		Source(String declaringClassName, String name, String descriptor) {
+		Source(String declaringClassName, String methodName, int access, String descriptor) {
 			this.declaringClassName = declaringClassName;
-			this.name = name;
+			this.methodName = methodName;
+			this.access = access;
 			this.descriptor = descriptor;
 		}
 
@@ -120,7 +121,8 @@ final class SimpleMethodMetadataReadingVisitor extends MethodVisitor {
 		public int hashCode() {
 			int result = 1;
 			result = 31 * result + this.declaringClassName.hashCode();
-			result = 31 * result + this.name.hashCode();
+			result = 31 * result + this.methodName.hashCode();
+			result = 31 * result + this.access;
 			result = 31 * result + this.descriptor.hashCode();
 			return result;
 		}
@@ -135,7 +137,8 @@ final class SimpleMethodMetadataReadingVisitor extends MethodVisitor {
 			}
 			Source otherSource = (Source) other;
 			return (this.declaringClassName.equals(otherSource.declaringClassName) &&
-					this.name.equals(otherSource.name) && this.descriptor.equals(otherSource.descriptor));
+					this.methodName.equals(otherSource.methodName) &&
+					this.access == otherSource.access && this.descriptor.equals(otherSource.descriptor));
 		}
 
 		@Override
@@ -143,15 +146,39 @@ final class SimpleMethodMetadataReadingVisitor extends MethodVisitor {
 			String value = this.toStringValue;
 			if (value == null) {
 				StringBuilder builder = new StringBuilder();
-				builder.append(this.declaringClassName);
-				builder.append(".");
-				builder.append(this.name);
-				Type[] argumentTypes = Type.getArgumentTypes(this.descriptor);
-				builder.append("(");
-				for (Type type : argumentTypes) {
-					builder.append(type.getClassName());
+				if ((this.access & Opcodes.ACC_PUBLIC) != 0) {
+					builder.append("public ");
 				}
-				builder.append(")");
+				if ((this.access & Opcodes.ACC_PROTECTED) != 0) {
+					builder.append("protected ");
+				}
+				if ((this.access & Opcodes.ACC_PRIVATE) != 0) {
+					builder.append("private ");
+				}
+				if ((this.access & Opcodes.ACC_ABSTRACT) != 0) {
+					builder.append("abstract ");
+				}
+				if ((this.access & Opcodes.ACC_STATIC) != 0) {
+					builder.append("static ");
+				}
+				if ((this.access & Opcodes.ACC_FINAL) != 0) {
+					builder.append("final ");
+				}
+				Type returnType = Type.getReturnType(this.descriptor);
+				builder.append(returnType.getClassName());
+				builder.append(' ');
+				builder.append(this.declaringClassName);
+				builder.append('.');
+				builder.append(this.methodName);
+				Type[] argumentTypes = Type.getArgumentTypes(this.descriptor);
+				builder.append('(');
+				for (int i = 0; i < argumentTypes.length; i++) {
+					if (i != 0) {
+						builder.append(',');
+					}
+					builder.append(argumentTypes[i].getClassName());
+				}
+				builder.append(')');
 				value = builder.toString();
 				this.toStringValue = value;
 			}

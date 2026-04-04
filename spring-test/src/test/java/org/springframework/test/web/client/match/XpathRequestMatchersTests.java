@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@ import org.springframework.mock.http.client.MockClientHttpRequest;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
- * Unit tests for {@link XpathRequestMatchers}.
+ * Tests for {@link XpathRequestMatchers}.
  *
  * @author Rossen Stoyanchev
  */
-public class XpathRequestMatchersTests {
+class XpathRequestMatchersTests {
 
 	private static final String RESPONSE_CONTENT = "<foo><bar>111</bar><bar>true</bar></foo>";
 
@@ -39,85 +39,85 @@ public class XpathRequestMatchersTests {
 
 
 	@BeforeEach
-	public void setUp() throws IOException {
+	void setUp() throws IOException {
 		this.request = new MockClientHttpRequest();
 		this.request.getBody().write(RESPONSE_CONTENT.getBytes());
 	}
 
 
 	@Test
-	public void testNodeMatcher() throws Exception {
+	void nodeMatcher() throws Exception {
 		new XpathRequestMatchers("/foo/bar", null).node(Matchers.notNullValue()).match(this.request);
 	}
 
 	@Test
-	public void testNodeMatcherNoMatch() throws Exception {
+	void nodeMatcherNoMatch() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new XpathRequestMatchers("/foo/bar", null).node(Matchers.nullValue()).match(this.request));
 	}
 
 	@Test
-	public void testExists() throws Exception {
+	void exists() throws Exception {
 		new XpathRequestMatchers("/foo/bar", null).exists().match(this.request);
 	}
 
 	@Test
-	public void testExistsNoMatch() throws Exception {
+	void existsNoMatch() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new XpathRequestMatchers("/foo/Bar", null).exists().match(this.request));
 	}
 
 	@Test
-	public void testDoesNotExist() throws Exception {
+	void doesNotExist() throws Exception {
 		new XpathRequestMatchers("/foo/Bar", null).doesNotExist().match(this.request);
 	}
 
 	@Test
-	public void testDoesNotExistNoMatch() throws Exception {
+	void doesNotExistNoMatch() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new XpathRequestMatchers("/foo/bar", null).doesNotExist().match(this.request));
 	}
 
 	@Test
-	public void testNodeCount() throws Exception {
+	void nodeCount() throws Exception {
 		new XpathRequestMatchers("/foo/bar", null).nodeCount(2).match(this.request);
 	}
 
 	@Test
-	public void testNodeCountNoMatch() throws Exception {
+	void nodeCountNoMatch() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new XpathRequestMatchers("/foo/bar", null).nodeCount(1).match(this.request));
 	}
 
 	@Test
-	public void testString() throws Exception {
+	void string() throws Exception {
 		new XpathRequestMatchers("/foo/bar[1]", null).string("111").match(this.request);
 	}
 
 	@Test
-	public void testStringNoMatch() throws Exception {
+	void stringNoMatch() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new XpathRequestMatchers("/foo/bar[1]", null).string("112").match(this.request));
 	}
 
 	@Test
-	public void testNumber() throws Exception {
+	void number() throws Exception {
 		new XpathRequestMatchers("/foo/bar[1]", null).number(111.0).match(this.request);
 	}
 
 	@Test
-	public void testNumberNoMatch() throws Exception {
+	void numberNoMatch() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new XpathRequestMatchers("/foo/bar[1]", null).number(111.1).match(this.request));
 	}
 
 	@Test
-	public void testBoolean() throws Exception {
+	void booleanCase() throws Exception {
 		new XpathRequestMatchers("/foo/bar[2]", null).booleanValue(true).match(this.request);
 	}
 
 	@Test
-	public void testBooleanNoMatch() throws Exception {
+	void booleanNoMatch() {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(() ->
 				new XpathRequestMatchers("/foo/bar[2]", null).booleanValue(false).match(this.request));
 	}

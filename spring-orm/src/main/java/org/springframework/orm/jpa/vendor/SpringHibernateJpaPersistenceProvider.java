@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +20,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.spi.PersistenceUnitInfo;
-
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.spi.PersistenceUnitInfo;
+import org.hibernate.bytecode.enhance.spi.EnhancementContext;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.jpa.HibernatePersistenceProvider;
 import org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl;
 import org.hibernate.jpa.boot.internal.PersistenceUnitInfoDescriptor;
 
+import org.springframework.core.NativeDetector;
 import org.springframework.orm.jpa.persistenceunit.SmartPersistenceUnitInfo;
+import org.springframework.util.ClassUtils;
 
 /**
  * Spring-specific subclass of the standard {@link HibernatePersistenceProvider}
@@ -37,25 +39,58 @@ import org.springframework.orm.jpa.persistenceunit.SmartPersistenceUnitInfo;
  *
  * @author Juergen Hoeller
  * @author Joris Kuipers
+ * @author Sebastien Deleuze
  * @since 4.1
  * @see Configuration#addPackage
  */
 class SpringHibernateJpaPersistenceProvider extends HibernatePersistenceProvider {
 
 	@Override
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	public EntityManagerFactory createContainerEntityManagerFactory(PersistenceUnitInfo info, Map properties) {
 		final List<String> mergedClassesAndPackages = new ArrayList<>(info.getManagedClassNames());
-		if (info instanceof SmartPersistenceUnitInfo) {
-			mergedClassesAndPackages.addAll(((SmartPersistenceUnitInfo) info).getManagedPackages());
+		if (info instanceof SmartPersistenceUnitInfo smartInfo) {
+			mergedClassesAndPackages.addAll(smartInfo.getManagedPackages());
 		}
-		return new EntityManagerFactoryBuilderImpl(
-				new PersistenceUnitInfoDescriptor(info) {
-					@Override
-					public List<String> getManagedClassNames() {
-						return mergedClassesAndPackages;
-					}
-				}, properties).build();
+
+		PersistenceUnitInfoDescriptor descriptor;
+		if (!NativeDetector.inNativeImage()) {
+			// No ClassTransformer adaptation necessary
+			descriptor = new PersistenceUnitInfoDescriptor(info) {
+				@Override
+				public List<String> getManagedClassNames() {
+					return mergedClassesAndPackages;
+				}
+			};
+		}
+		else if (ClassUtils.hasMethod(PersistenceUnitInfoDescriptor.class, "isClassTransformerRegistrationDisabled")) {
+			// Hibernate 8.0: no pushClassTransformer override necessary
+			descriptor = new PersistenceUnitInfoDescriptor(info) {
+				@Override
+				public List<String> getManagedClassNames() {
+					return mergedClassesAndPackages;
+				}
+				@SuppressWarnings("unused")  // @Override on Hibernate 8.0
+				public boolean isClassTransformerRegistrationDisabled() {
+					return true;
+				}
+			};
+		}
+		else {
+			// Hibernate 7.x: pushClassTransformer no-op in native image
+			descriptor = new PersistenceUnitInfoDescriptor(info) {
+				@Override
+				public List<String> getManagedClassNames() {
+					return mergedClassesAndPackages;
+				}
+				@Override
+				public void pushClassTransformer(EnhancementContext enhancementContext) {
+					// no-op
+				}
+			};
+		}
+
+		return new EntityManagerFactoryBuilderImpl(descriptor, properties).build();
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,14 +44,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link HttpHandlerConnector}.
+ * Tests for {@link HttpHandlerConnector}.
+ *
  * @author Rossen Stoyanchev
  */
-public class HttpHandlerConnectorTests {
-
+class HttpHandlerConnectorTests {
 
 	@Test
-	public void adaptRequest() {
+	void adaptRequest() {
 
 		TestHttpHandler handler = new TestHttpHandler(response -> {
 			response.setStatusCode(HttpStatus.OK);
@@ -79,7 +79,7 @@ public class HttpHandlerConnectorTests {
 	}
 
 	@Test
-	public void adaptResponse() {
+	void adaptResponse() {
 
 		ResponseCookie cookie = ResponseCookie.from("custom-cookie", "c0").build();
 
@@ -105,7 +105,7 @@ public class HttpHandlerConnectorTests {
 	}
 
 	@Test // gh-23936
-	public void handlerOnNonBlockingThread() {
+	void handlerOnNonBlockingThread() {
 
 		TestHttpHandler handler = new TestHttpHandler(response -> {
 

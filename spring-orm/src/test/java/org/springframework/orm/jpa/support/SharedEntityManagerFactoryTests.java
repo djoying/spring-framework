@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,8 @@
 
 package org.springframework.orm.jpa.support;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.orm.jpa.EntityManagerHolder;
@@ -36,16 +35,15 @@ import static org.mockito.Mockito.verify;
  * @author Juergen Hoeller
  * @author Phillip Webb
  */
-public class SharedEntityManagerFactoryTests {
+class SharedEntityManagerFactoryTests {
 
 	@Test
-	public void testValidUsage() {
+	void validUsage() {
 		Object o = new Object();
 
-		EntityManager mockEm = mock(EntityManager.class);
-		given(mockEm.isOpen()).willReturn(true);
+		EntityManager mockEm = mock();
 
-		EntityManagerFactory mockEmf = mock(EntityManagerFactory.class);
+		EntityManagerFactory mockEmf = mock();
 		given(mockEmf.createEntityManager()).willReturn(mockEm);
 
 		SharedEntityManagerBean proxyFactoryBean = new SharedEntityManagerBean();
@@ -59,8 +57,7 @@ public class SharedEntityManagerFactoryTests {
 		assertThat(proxyFactoryBean.getObject()).isSameAs(proxy);
 		assertThat(proxy.contains(o)).isFalse();
 
-		boolean condition = proxy instanceof EntityManagerProxy;
-		assertThat(condition).isTrue();
+		assertThat(proxy).isInstanceOf(EntityManagerProxy.class);
 		EntityManagerProxy emProxy = (EntityManagerProxy) proxy;
 		assertThatIllegalStateException().as("outside of transaction").isThrownBy(
 				emProxy::getTargetEntityManager);
@@ -73,7 +70,7 @@ public class SharedEntityManagerFactoryTests {
 			TransactionSynchronizationManager.unbindResource(mockEmf);
 		}
 
-		assertThat(TransactionSynchronizationManager.getResourceMap().isEmpty()).isTrue();
+		assertThat(TransactionSynchronizationManager.getResourceMap()).isEmpty();
 		verify(mockEm).contains(o);
 		verify(mockEm).close();
 	}

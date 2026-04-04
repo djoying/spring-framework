@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests for scoped proxy use in conjunction with aop: namespace.
- * Deemed an integration test because .web mocks and application contexts are required.
+ * Deemed an integration test because web mocks and application contexts are required.
  *
  * @author Rob Harrop
  * @author Juergen Hoeller
@@ -61,10 +61,9 @@ class AopNamespaceHandlerScopeIntegrationTests {
 
 
 	@Test
-	void testSingletonScoping() throws Exception {
+	void singletonScoping() throws Exception {
 		assertThat(AopUtils.isAopProxy(singletonScoped)).as("Should be AOP proxy").isTrue();
-		boolean condition = singletonScoped instanceof TestBean;
-		assertThat(condition).as("Should be target class proxy").isTrue();
+		assertThat(singletonScoped).as("Should be target class proxy").isInstanceOf(TestBean.class);
 		String rob = "Rob Harrop";
 		String bram = "Bram Smeets";
 		assertThat(singletonScoped.getName()).isEqualTo(rob);
@@ -75,19 +74,17 @@ class AopNamespaceHandlerScopeIntegrationTests {
 	}
 
 	@Test
-	void testRequestScoping() throws Exception {
+	void requestScoping() {
 		MockHttpServletRequest oldRequest = new MockHttpServletRequest();
 		MockHttpServletRequest newRequest = new MockHttpServletRequest();
 
 		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(oldRequest));
 
 		assertThat(AopUtils.isAopProxy(requestScoped)).as("Should be AOP proxy").isTrue();
-		boolean condition = requestScoped instanceof TestBean;
-		assertThat(condition).as("Should be target class proxy").isTrue();
+		assertThat(requestScoped).as("Should be target class proxy").isInstanceOf(TestBean.class);
 
 		assertThat(AopUtils.isAopProxy(testBean)).as("Should be AOP proxy").isTrue();
-		boolean condition1 = testBean instanceof TestBean;
-		assertThat(condition1).as("Regular bean should be JDK proxy").isFalse();
+		assertThat(testBean).as("Regular bean should be JDK proxy").isNotInstanceOf(TestBean.class);
 
 		String rob = "Rob Harrop";
 		String bram = "Bram Smeets";
@@ -99,11 +96,11 @@ class AopNamespaceHandlerScopeIntegrationTests {
 		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(oldRequest));
 		assertThat(requestScoped.getName()).isEqualTo(bram);
 
-		assertThat(((Advised) requestScoped).getAdvisors().length > 0).as("Should have advisors").isTrue();
+		assertThat(((Advised) requestScoped).getAdvisors()).as("Should have advisors").isNotEmpty();
 	}
 
 	@Test
-	void testSessionScoping() throws Exception {
+	void sessionScoping() {
 		MockHttpSession oldSession = new MockHttpSession();
 		MockHttpSession newSession = new MockHttpSession();
 
@@ -112,14 +109,12 @@ class AopNamespaceHandlerScopeIntegrationTests {
 		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
 		assertThat(AopUtils.isAopProxy(sessionScoped)).as("Should be AOP proxy").isTrue();
-		boolean condition1 = sessionScoped instanceof TestBean;
-		assertThat(condition1).as("Should not be target class proxy").isFalse();
+		assertThat(sessionScoped).as("Should not be target class proxy").isNotInstanceOf(TestBean.class);
 
 		assertThat(sessionScopedAlias).isSameAs(sessionScoped);
 
 		assertThat(AopUtils.isAopProxy(testBean)).as("Should be AOP proxy").isTrue();
-		boolean condition = testBean instanceof TestBean;
-		assertThat(condition).as("Regular bean should be JDK proxy").isFalse();
+		assertThat(testBean).as("Regular bean should be JDK proxy").isNotInstanceOf(TestBean.class);
 
 		String rob = "Rob Harrop";
 		String bram = "Bram Smeets";
@@ -131,7 +126,7 @@ class AopNamespaceHandlerScopeIntegrationTests {
 		request.setSession(oldSession);
 		assertThat(sessionScoped.getName()).isEqualTo(bram);
 
-		assertThat(((Advised) sessionScoped).getAdvisors().length > 0).as("Should have advisors").isTrue();
+		assertThat(((Advised) sessionScoped).getAdvisors()).as("Should have advisors").isNotEmpty();
 	}
 
 }

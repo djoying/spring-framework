@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,14 @@
 package org.springframework.beans.factory.support;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.MutablePropertyValues;
@@ -35,8 +36,7 @@ import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.EncodedResource;
-import org.springframework.core.io.support.ResourcePropertiesPersister;
-import org.springframework.lang.Nullable;
+import org.springframework.util.DefaultPropertiesPersister;
 import org.springframework.util.PropertiesPersister;
 import org.springframework.util.StringUtils;
 
@@ -74,10 +74,10 @@ import org.springframework.util.StringUtils;
  * @author Rob Harrop
  * @since 26.11.2003
  * @see DefaultListableBeanFactory
- * @deprecated as of 5.3, in favor of Spring's common bean definition formats
- * and/or custom reader implementations
+ * @deprecated in favor of Spring's common bean definition formats and/or
+ * custom BeanDefinitionReader implementations
  */
-@Deprecated
+@Deprecated(since = "5.3")
 public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader {
 
 	/**
@@ -128,7 +128,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 
 	/**
 	 * Property suffix for references to other beans in the current
-	 * BeanFactory: e.g. {@code owner.dog(ref)=fido}.
+	 * BeanFactory: for example, {@code owner.dog(ref)=fido}.
 	 * Whether this is a reference to a singleton or a prototype
 	 * will depend on the definition of the target bean.
 	 */
@@ -145,10 +145,9 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	public static final String CONSTRUCTOR_ARG_PREFIX = "$";
 
 
-	@Nullable
-	private String defaultParentBean;
+	private @Nullable String defaultParentBean;
 
-	private PropertiesPersister propertiesPersister = ResourcePropertiesPersister.INSTANCE;
+	private PropertiesPersister propertiesPersister = DefaultPropertiesPersister.INSTANCE;
 
 
 	/**
@@ -165,7 +164,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	 * Set the default parent bean for this bean factory.
 	 * If a child bean definition handled by this factory provides neither
 	 * a parent nor a class attribute, this default value gets used.
-	 * <p>Can be used e.g. for view definition files, to define a parent
+	 * <p>Can be used, for example, for view definition files, to define a parent
 	 * with a default view class and common attributes for all views.
 	 * View definitions that define their own parent or carry their own
 	 * class can still override this.
@@ -180,19 +179,18 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	/**
 	 * Return the default parent bean for this bean factory.
 	 */
-	@Nullable
-	public String getDefaultParentBean() {
+	public @Nullable String getDefaultParentBean() {
 		return this.defaultParentBean;
 	}
 
 	/**
 	 * Set the PropertiesPersister to use for parsing properties files.
-	 * The default is ResourcePropertiesPersister.
-	 * @see ResourcePropertiesPersister#INSTANCE
+	 * The default is {@code DefaultPropertiesPersister}.
+	 * @see DefaultPropertiesPersister#INSTANCE
 	 */
 	public void setPropertiesPersister(@Nullable PropertiesPersister propertiesPersister) {
 		this.propertiesPersister =
-				(propertiesPersister != null ? propertiesPersister : ResourcePropertiesPersister.INSTANCE);
+				(propertiesPersister != null ? propertiesPersister : DefaultPropertiesPersister.INSTANCE);
 	}
 
 	/**
@@ -219,7 +217,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	/**
 	 * Load bean definitions from the specified properties file.
 	 * @param resource the resource descriptor for the properties file
-	 * @param prefix a filter within the keys in the map: e.g. 'beans.'
+	 * @param prefix a filter within the keys in the map: for example, 'beans.'
 	 * (can be empty or {@code null})
 	 * @return the number of bean definitions found
 	 * @throws BeanDefinitionStoreException in case of loading or parsing errors
@@ -243,7 +241,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	 * Load bean definitions from the specified properties file.
 	 * @param encodedResource the resource descriptor for the properties file,
 	 * allowing to specify an encoding to use for parsing the file
-	 * @param prefix a filter within the keys in the map: e.g. 'beans.'
+	 * @param prefix a filter within the keys in the map: for example, 'beans.'
 	 * (can be empty or {@code null})
 	 * @return the number of bean definitions found
 	 * @throws BeanDefinitionStoreException in case of loading or parsing errors
@@ -257,14 +255,14 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 
 		Properties props = new Properties();
 		try {
-			try (InputStream is = encodedResource.getResource().getInputStream()) {
+			encodedResource.getResource().consumeContent(is -> {
 				if (encodedResource.getEncoding() != null) {
 					getPropertiesPersister().load(props, new InputStreamReader(is, encodedResource.getEncoding()));
 				}
 				else {
 					getPropertiesPersister().load(props, is);
 				}
-			}
+			});
 
 			int count = registerBeanDefinitions(props, prefix, encodedResource.getResource().getDescription());
 			if (logger.isDebugEnabled()) {
@@ -294,7 +292,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	 * <p>Similar syntax as for a Map. This method is useful to enable
 	 * standard Java internationalization support.
 	 * @param rb the ResourceBundle to load from
-	 * @param prefix a filter within the keys in the map: e.g. 'beans.'
+	 * @param prefix a filter within the keys in the map: for example, 'beans.'
 	 * (can be empty or {@code null})
 	 * @return the number of bean definitions found
 	 * @throws BeanDefinitionStoreException in case of loading or parsing errors
@@ -331,7 +329,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	 * @param map a map of {@code name} to {@code property} (String or Object). Property
 	 * values will be strings if coming from a Properties file etc. Property names
 	 * (keys) <b>must</b> be Strings. Class keys must be Strings.
-	 * @param prefix a filter within the keys in the map: e.g. 'beans.'
+	 * @param prefix a filter within the keys in the map: for example, 'beans.'
 	 * (can be empty or {@code null})
 	 * @return the number of bean definitions found
 	 * @throws BeansException in case of loading or parsing errors
@@ -346,7 +344,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	 * @param map a map of {@code name} to {@code property} (String or Object). Property
 	 * values will be strings if coming from a Properties file etc. Property names
 	 * (keys) <b>must</b> be Strings. Class keys must be Strings.
-	 * @param prefix a filter within the keys in the map: e.g. 'beans.'
+	 * @param prefix a filter within the keys in the map: for example, 'beans.'
 	 * (can be empty or {@code null})
 	 * @param resourceDescription description of the resource that the
 	 * Map came from (for logging purposes)
@@ -363,10 +361,9 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 		int beanCount = 0;
 
 		for (Object key : map.keySet()) {
-			if (!(key instanceof String)) {
+			if (!(key instanceof String keyString)) {
 				throw new IllegalArgumentException("Illegal key [" + key + "]: only Strings allowed");
 			}
-			String keyString = (String) key;
 			if (keyString.startsWith(prefix)) {
 				// Key is of form: prefix<name>.property
 				String nameAndProperty = keyString.substring(prefix.length());
@@ -406,10 +403,10 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	/**
 	 * Get all property values, given a prefix (which will be stripped)
 	 * and add the bean they define to the factory with the given name.
-	 * @param beanName name of the bean to define
+	 * @param beanName the name of the bean to define
 	 * @param map a Map containing string pairs
-	 * @param prefix prefix of each entry, which will be stripped
-	 * @param resourceDescription description of the resource that the
+	 * @param prefix the prefix of each entry, which will be stripped
+	 * @param resourceDescription the description of the resource that the
 	 * Map came from (for logging purposes)
 	 * @throws BeansException if the bean definition could not be parsed or registered
 	 */
@@ -429,40 +426,40 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 		int beginIndex = prefixWithSep.length();
 
 		for (Map.Entry<?, ?> entry : map.entrySet()) {
-			String key = StringUtils.trimWhitespace((String) entry.getKey());
+			String key = ((String) entry.getKey()).strip();
 			if (key.startsWith(prefixWithSep)) {
 				String property = key.substring(beginIndex);
 				if (CLASS_KEY.equals(property)) {
-					className = StringUtils.trimWhitespace((String) entry.getValue());
+					className = ((String) entry.getValue()).strip();
 				}
 				else if (PARENT_KEY.equals(property)) {
-					parent = StringUtils.trimWhitespace((String) entry.getValue());
+					parent = ((String) entry.getValue()).strip();
 				}
 				else if (ABSTRACT_KEY.equals(property)) {
-					String val = StringUtils.trimWhitespace((String) entry.getValue());
+					String val = ((String) entry.getValue()).strip();
 					isAbstract = TRUE_VALUE.equals(val);
 				}
 				else if (SCOPE_KEY.equals(property)) {
 					// Spring 2.0 style
-					scope = StringUtils.trimWhitespace((String) entry.getValue());
+					scope = ((String) entry.getValue()).strip();
 				}
 				else if (SINGLETON_KEY.equals(property)) {
 					// Spring 1.2 style
-					String val = StringUtils.trimWhitespace((String) entry.getValue());
+					String val = ((String) entry.getValue()).strip();
 					scope = (!StringUtils.hasLength(val) || TRUE_VALUE.equals(val) ?
 							BeanDefinition.SCOPE_SINGLETON : BeanDefinition.SCOPE_PROTOTYPE);
 				}
 				else if (LAZY_INIT_KEY.equals(property)) {
-					String val = StringUtils.trimWhitespace((String) entry.getValue());
+					String val = ((String) entry.getValue()).strip();
 					lazyInit = TRUE_VALUE.equals(val);
 				}
 				else if (property.startsWith(CONSTRUCTOR_ARG_PREFIX)) {
 					if (property.endsWith(REF_SUFFIX)) {
-						int index = Integer.parseInt(property.substring(1, property.length() - REF_SUFFIX.length()));
+						int index = Integer.parseInt(property, 1, property.length() - REF_SUFFIX.length(), 10);
 						cas.addIndexedArgumentValue(index, new RuntimeBeanReference(entry.getValue().toString()));
 					}
 					else {
-						int index = Integer.parseInt(property.substring(1));
+						int index = Integer.parseInt(property, 1, property.length(), 10);
 						cas.addIndexedArgumentValue(index, readValue(entry));
 					}
 				}
@@ -470,7 +467,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 					// This isn't a real property, but a reference to another prototype
 					// Extract property name: property is of form dog(ref)
 					property = property.substring(0, property.length() - REF_SUFFIX.length());
-					String ref = StringUtils.trimWhitespace((String) entry.getValue());
+					String ref = ((String) entry.getValue()).strip();
 
 					// It doesn't matter if the referenced bean hasn't yet been registered:
 					// this will ensure that the reference is resolved at runtime.
@@ -519,8 +516,7 @@ public class PropertiesBeanDefinitionReader extends AbstractBeanDefinitionReader
 	 */
 	private Object readValue(Map.Entry<?, ?> entry) {
 		Object val = entry.getValue();
-		if (val instanceof String) {
-			String strVal = (String) val;
+		if (val instanceof String strVal) {
 			// If it starts with a reference prefix...
 			if (strVal.startsWith(REF_PREFIX)) {
 				// Expand the reference.
